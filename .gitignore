@@ -1,0 +1,28 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Logs / temp
+*.log
+*.tmp
+.cache/
+
+# Large data / checkpoints (if added later)
+*.ckpt
+*.pt
+*.bin
+*.safetensors
+data/raw/
