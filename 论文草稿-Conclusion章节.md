@@ -1,23 +1,23 @@
 # SpeakerMem-R1 论文草稿：Conclusion 章节
 
-**版本**：v1.0（2026-06-02，V5/V6 迭代产出）  
+**版本**：v1.1（2026-06-02，中文化改写）  
 **状态**：草稿
 
 ---
 
 ## 5. Conclusion
 
-We presented SpeakerMem-R1, the first reinforcement learning framework for memory management in multi-party conversations. Our approach addresses a fundamental gap in existing RL-based memory agents: all prior work assumes a single conversational partner, making speaker attribution, audience adaptation, and cross-speaker privacy unaddressable by design.
+我们提出了 **SpeakerMem-R1**，**首个面向多方对话记忆管理的强化学习（RL）框架**。我们的方案弥补了现有基于 RL 的记忆 agent 的一个根本性空白：所有先前工作都假设只有单一对话对象，使得说话人归属、受众适配与跨说话人隐私在设计上就无从处理。
 
-SpeakerMem-R1 contributes three interlocking innovations. First, SpeakerLevenshtein provides dense process rewards computed per-speaker, explicitly penalizing cross-speaker attribution errors that flat Levenshtein rewards cannot distinguish. Second, Speaker-Conditioned LoGo-GRPO extends fair credit assignment to multi-party trajectories by stratifying local rerollouts on the active speaker set — a logical necessity, not merely a convenience, since memory strategies fundamentally differ across speaker compositions. Third, our five-layer speaker-indexed memory architecture directly addresses the five failure modes documented in SocialMemBench, making speaker grounding a first-class design principle rather than an afterthought.
+SpeakerMem-R1 贡献了三项相互咬合的创新。**第一，SpeakerLevenshtein** 提供按说话人计算的稠密过程奖励，显式惩罚扁平 Levenshtein 奖励无法区分的跨说话人归属错误。**第二，Speaker-Conditioned LoGo-GRPO** 通过按 active speaker set 对 local rerollout 进行分层，把公平信用分配扩展到多方轨迹——这是逻辑必然，而非便利之举，因为记忆策略在不同说话人组成之间存在本质差异。**第三**，我们的**五层说话人索引记忆架构**直接对应 **SocialMemBench** 记录的五种失败模式，使说话人锚定成为一等设计原则，而非事后补丁。
 
-Evaluated on GroupMemBench, EverMemBench, and SocialMemBench — the three multi-party benchmarks that collectively reveal systematic failures in all existing memory systems — SpeakerMem-R1 achieves substantial improvements over both training-free and RL-based baselines adapted to multi-party settings. Ablation studies confirm that per-speaker bucketing contributes the largest gains on attribution-heavy categories, validating that the core challenge in multi-party memory is not retrieval quality but memory writing quality with speaker grounding.
+在 **GroupMemBench**、**EverMemBench**、**SocialMemBench**——这三个共同揭示了所有现有记忆系统系统性失败的多方 benchmark——上评测，SpeakerMem-R1 相比 training-free 与改写到多方设定的 RL 基线均取得显著提升。消融研究确认，按说话人分桶在归属密集的类别上贡献最大，印证了多方记忆的核心挑战不在于检索质量，而在于带说话人锚定的记忆写入质量。
 
-**Limitations.** SpeakerMem-R1 relies on synthesized training data, as all three multi-party benchmarks lack training splits. While our quality validation pipeline mitigates this, transfer to real-world multi-party conversations may face domain gaps. Additionally, the K-fold computational overhead of speaker-conditioned rerollouts (approximately 3-5× over dyadic RL) limits deployment to moderate-scale multi-party settings (K ≤ 8 in our experiments).
+**局限（Limitations）。** SpeakerMem-R1 依赖合成训练数据，因为三个多方 benchmark 都缺乏训练 split。尽管我们的质量验证 pipeline 缓解了这一点，但迁移到真实世界多方对话仍可能面临领域差异（domain gap）。此外，说话人条件化 rerollout 的 K 重计算开销（约为 dyadic RL 的 3–5×）限制了在更大规模多方设定中的部署（我们实验中 K ≤ 8）。
 
-**Future Work.** Several extensions merit exploration. MultiPartyPRM — a process reward model trained on human annotations of attribution quality — could replace our automated reward signals with richer supervision. SpeakerForget-RL could develop dedicated SUPPRESS policies for privacy-sensitive fact removal under user requests. Scaling experiments to larger group sizes (K > 10) would test whether speaker-conditioned LoGo remains effective in larger social groups.
+**未来工作（Future Work）。** 若干扩展值得探索。**MultiPartyPRM**——一个在人类对归属质量的标注上训练的过程奖励模型（process reward model）——可以用更丰富的监督替代我们的自动化奖励信号。**SpeakerForget-RL** 可以为用户请求下的隐私敏感事实移除开发专门的 SUPPRESS 策略。把扩展实验推向更大群组规模（K > 10），可以检验说话人条件化 LoGo 在更大社交群组中是否依然有效。
 
-We release SpeakerMem-R1's training code, the synthesized 200-dialogue dataset, and the EverMemOS-based evaluation interface to facilitate future research on multi-party memory agents.
+我们将发布 SpeakerMem-R1 的训练代码、合成的 200 段对话数据集，以及基于 EverMemOS 的评测接口，以促进多方记忆 agent 的后续研究。
 
 ---
 
@@ -40,8 +40,8 @@ We release SpeakerMem-R1's training code, the synthesized 200-dialogue dataset, 
 
 ### 长度控制
 
-目标 400-500 词（AAAI 格式下约 0.5 页），现在草稿约 350 词，实验完成后可以加入具体数字（"achieves XX% on GroupMemBench vs YY% baseline"）扩展到 400-450 词。
+目标 400–500 词（AAAI 格式下约 0.5 页），现在草稿约 350 词，实验完成后可加入具体数字（"achieves XX% on GroupMemBench vs YY% baseline"）扩展到 400–450 词。
 
 ---
 
-*草稿版本 v1.0 | 2026-06-02 | V5/V6 迭代产出*
+*草稿版本 v1.1（中文化）| 2026-06-02*
