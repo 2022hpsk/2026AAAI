@@ -26,3 +26,12 @@ venv/
 *.bin
 *.safetensors
 data/raw/
+
+# Slides build artifacts (keep gen*.js + package*.json; drop installed/generated stuff)
+汇报slides-build/node_modules/
+汇报slides-build/img/
+汇报slides-build/img_v2/
+汇报slides-build/deck.pptx
+汇报slides-build/*.pdf
+汇报slides-build/preview*.pptx
+汇报slides-build/*.output

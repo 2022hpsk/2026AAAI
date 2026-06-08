@@ -11,13 +11,23 @@
 
 RL 用于长期对话记忆管理的研究在过去一年快速演进。**Memory-R1** [cite] 首次把 RL 用于长期记忆管理，提出 Memory Manager + Answer Agent 的双 agent 架构，前者学习 ADD/UPDATE/DELETE/NOOP 操作，后者通过 Memory Distillation 从 60 条候选中推理答案，仅用 152 条 QA pairs 训练即在 **LoCoMo** 上取得显著提升（F1 相对提升 48%）。**AgeMem** [cite] 进一步把 LTM/STM 管理统一为六类工具动作，提出 step-wise GRPO 来解决记忆操作轨迹碎片化的优化问题，在 5 个 benchmark 上平均提升 4.82–8.57%。**Mem-α** [cite] 设计 core/episodic/semantic 三组件架构，在 30k token 上训练却能泛化到 400k+ token。**MemSearcher** [cite] 提出 multi-context GRPO，使 3B 模型超过 7B baseline。**MEM1** [cite] 用 masked trajectory 技术处理多上下文演化下的非线性轨迹。
 
-更近的工作聚焦于信用分配（credit assignment）与奖励密度（reward density）问题。**Mem-T** [cite] 提出 Memory Operation Tree（MoT），通过树搜索探索多条操作路径，把 outcome reward 反向传播到每个操作节点，并结合 hindsight credit 精确归因，比 **A-MEM**/**Mem0** 提升达 14.92%。**DeltaMem** [cite] 引入 Memory-based Levenshtein Distance 作为稠密过程奖励（dense process reward），通过 optimal transport 计算 predicted 与 GT memory state 的距离，用 $R = 0.1 R_{format} + 0.1 R_{retrieval} + 0.8 R_{state}$ 的权重设计显著改善了收敛速度。**Memory-R2** [cite] 识别出 GRPO 在 multi-session 训练中信用分配不公平的根本原因——不同 rollout 修改了不同的 memory state，导致中间态发散——并提出 LoGo-GRPO，通过 local rerollout（从 shared intermediate state 分支）恢复公平比较，同时用 8→16→32 sessions 的渐进式 curriculum 稳定训练。**CoMAM** [cite] 指出 Memory-R1 的 sequential 双 agent 训练忽视了跨 agent 协同，提出 joint 端到端 RL，用 group-level ranking consistency 量化每个 agent 的 adaptive credit weight，在 **PersonaMem** 上提升 8.5–16.7%。此外，**MemBuilder** [cite] 提出 attributed dense reward 与四维记忆结构，是技术上最接近的近期竞品之一，可作为重要 baseline；**R²-Mem** [cite] 引入反思式经验记忆搜索（reflective memory search），在 dyadic 设定下取得 F1 +22.6% 的提升，但同样不涉及多方说话人维度。
+更近的工作聚焦于信用分配（credit assignment）与奖励密度（reward density）问题。**Mem-T** [cite] 提出 Memory Operation Tree（MoT），通过树搜索探索多条操作路径，把 outcome reward 反向传播到每个操作节点，并结合 hindsight credit 精确归因，比 **A-MEM**/**Mem0** 提升达 14.92%。**DeltaMem** [cite] 引入 Memory-based Levenshtein Distance 作为稠密过程奖励（dense process reward），通过 optimal transport 计算 predicted 与 GT memory state 的距离，用 $R = 0.1 R_{format} + 0.1 R_{retrieval} + 0.8 R_{state}$ 的权重设计显著改善了收敛速度。**Memory-R2** [cite] 识别出 GRPO 在 multi-session 训练中信用分配不公平的根本原因——不同 rollout 修改了不同的 memory state，导致中间态发散——并提出 LoGo-GRPO，通过 local rerollout（从 shared intermediate state 分支）恢复公平比较，同时用 8→16→32 sessions 的渐进式 curriculum 稳定训练。**CoMAM** [cite] 指出 Memory-R1 的 sequential 双 agent 训练忽视了跨 agent 协同，提出 joint 端到端 RL，用 group-level ranking consistency 量化每个 agent 的 adaptive credit weight，在 **PersonaMem** 上提升 8.5–16.7%。此外，**MemBuilder** [cite] 提出 attributed dense reward 与四维记忆结构，其归因式稠密奖励的设计动机与本文最为接近；**R²-Mem** [cite] 引入反思式经验记忆搜索（reflective memory search），在 dyadic 设定下取得 F1 +22.6% 的提升。在**读侧（retrieval-time）**，**DeferMem** [cite] 提出 query-time 证据蒸馏（DistillPO），从高召回候选中提炼精确证据；**DualMem** [cite] 以 facts→insights 双流组织记忆。然而上述工作均局限于 dyadic 设定，均未涉及多方场景下的说话人归属与受众适配。
 
 上述所有工作均在 **dyadic（两人对话）** 设定下设计和验证，没有考虑多方场景下的说话人归属与受众适配问题。本文填补这一空白。
 
 ---
 
-### 2.2 多方对话记忆系统
+### 2.2 通用记忆系统：从"基线三件套"到 2026 新秀（均为单用户 / dyadic）
+
+LLM 记忆系统已形成成熟的工程谱系，也是近期工作（如 **DeferMem** [cite]，其对照集为 FullText / NaiveRAG / Mem0 / A-MEM / MemoryOS / MemGAS / LightMem / GAM / Memory-R1）的标准 baseline。可归为三条范式：(i) **CRUD 范式**——以 **Mem0** [cite] 为代表，LLM 对每条 fact 直接决策 ADD/UPDATE/DELETE/NOOP，是 production 标准；(ii) **原子链接范式**——**A-MEM** [cite] 用动态生成的链接关联原子记忆，无需预定义 schema；(iii) **遗忘曲线范式**——**MemoryBank** [cite] 用艾宾浩斯式强度衰减建模记忆遗忘。
+
+2025–2026 年又涌现一批更强的单用户记忆系统：**MemoryOS** [cite]（EMNLP 2025，OS 式短/中/长期分层存储，LoCoMo F1 +49%）、**MemGAS** [cite]（ICLR 2026，多粒度记忆关联 + GMM 聚类 + 熵路由检索）、**LightMem** [cite]（ICLR 2026，在线/离线分离 + LLMLingua-2 压缩，token 用量降至约 1/117）、**GAM**（General Agentic Memory）[cite]（Memorizer + Researcher 双 LLM、JIT 式 query-time 检索、RL 优化）。
+
+然而，上述系统**无一例外都是单用户 / dyadic 设定**：记忆条目不绑定说话人，读写策略也不区分"谁说的、说给谁"。在多方 benchmark 上它们集体退化——GroupMemBench 上一个朴素 **BM25** 即可追平甚至超过 Mem0、A-MEM 等 production 级系统 [cite]，SocialMemBench 上 Mem0/LangMem/Graphiti/Cognee 仅得 0.12–0.18 [cite]。这说明现有记忆写入策略**抹掉了多方记忆赖以成立的 speaker- 与 audience-grounded 结构线索**，正是本文 speaker-grounded 学习式记忆要补的缺口。
+
+---
+
+### 2.3 多方对话记忆系统
 
 多方记忆的研究主要集中在 training-free 系统与 benchmark 构建上，缺乏 RL 训练方法。
 
@@ -31,7 +41,7 @@ RL 用于长期对话记忆管理的研究在过去一年快速演进。**Memory
 
 ---
 
-### 2.3 多方记忆评测 Benchmark
+### 2.4 多方记忆评测 Benchmark
 
 2026 年密集出现了专门针对多方场景的记忆评测 benchmark，揭示了现有系统的严重局限。
 
@@ -45,7 +55,7 @@ RL 用于长期对话记忆管理的研究在过去一年快速演进。**Memory
 
 ---
 
-### 2.4 长程 RL 的信用分配
+### 2.5 长程 RL 的信用分配
 
 信用分配（credit assignment）是长程 RL 的核心挑战，在 LLM agent 领域受到广泛关注。
 
@@ -55,13 +65,13 @@ RL 用于长期对话记忆管理的研究在过去一年快速演进。**Memory
 
 ---
 
-### 2.5 课程学习与训练稳定性
+### 2.6 课程学习与训练稳定性
 
 记忆 RL 的训练稳定性高度依赖课程设计与奖励形式。已有工程研究 [cite] 表明：在长程记忆 RL 中应使用 token-level F1 而非 binary EM（后者在 $G=4$ 时梯度为零）、混合课程（mixed curriculum）优于单一难度课程，且训练样本量约在 150 条附近出现"专精 vs 聚合"的拐点。**Memory-R2** [cite] 的 session-count 渐进课程（8→16→32）是稳定 multi-session 训练的关键。我们在此基础上沿**说话人数量维度**扩展课程（K=3→5→8），构成 session 长度 × 说话人数量的二维课程，这对多方记忆 RL 是新的设计。
 
 ---
 
-### 表 1：竞品 Landscape（多方 + RL 零篇验证）
+### 表 1：现有记忆方法对比（多方 + RL 设定下尚无先例）
 
 | 方法 | 年份 | 训练方式 | Setting | 评测 Benchmark |
 |------|------|---------|---------|---------------|
@@ -72,6 +82,9 @@ RL 用于长期对话记忆管理的研究在过去一年快速演进。**Memory
 | DeltaMem | 2026.04 | Levenshtein RL | **dyadic** | LoCoMo/PersonaMem |
 | CoMAM | 2026.03 | joint RL | **dyadic** | PersonaMem |
 | MemBuilder | 2026.01 | attributed dense reward | **dyadic** | LoCoMo |
+| Mem0 / A-MEM / MemoryBank | 2024–25 | training-free | **dyadic** | LoCoMo |
+| MemoryOS / MemGAS / LightMem | 2025–26 | training-free | **dyadic** | LoCoMo / LongMemEval |
+| GAM / DeferMem | 2025–26 | RL（读侧 / 检索时） | **dyadic** | LoCoMo / 长上下文 |
 | G-Memory | 2025.06 | training-free | multi-agent | 5 benchmarks |
 | Collab. Mem | 2025.05 | training-free | multi-agent | — |
 | GroupMemBench | 2026.05 | — | **multi-party** | 自身（benchmark） |
