@@ -16,7 +16,7 @@ const C = {
   violet:"6D5BD0", violetBg:"ECE9FB",
 };
 const F = { head:"Microsoft YaHei", body:"Microsoft YaHei", num:"Arial Black" };
-const W=10, H=5.625, M=0.5, TOTAL=13;
+const W=10, H=5.625, M=0.5, TOTAL=16;
 const RECT="rect", ROUND="roundRect", OVAL="ellipse", LINE="line";
 const mkShadow = () => ({ type:"outer", color:"0F172A", blur:8, offset:3, angle:135, opacity:0.12 });
 
@@ -128,7 +128,65 @@ async function main(){
     footer(s);
   }
 
-  // ============ PAGE 3 — Related Work ①a：单用户记忆系统（training-free，按时间）============
+  // ============ PAGE 3/4/5 — 三个 benchmark 论文 baseline × 指标 详细表 ============
+  {
+    const THc=(t)=>({text:t,options:{fill:{color:C.dark},color:C.white,bold:true,fontSize:8,align:"center",valign:"middle",fontFace:F.head}});
+    const benchTable=(title,sub,cols,data,colW,note,strongRe)=>{
+      const s=pres.addSlide(); s.background={color:C.white};
+      header(s,title,sub,C.cyan);
+      const C0=(t,o={})=>TC(t,{align:"center",fs:8.2,...o});
+      const rows=[[TH("Method"),...cols.map(c=>THc(c))]];
+      data.forEach((r,i)=>{
+        const bg=i%2?C.panel2:C.white;
+        const strong=strongRe.test(r[0]);
+        const rowcells=[TC(r[0],{bold:true,color:strong?C.cyanDk:C.ink,fs:8.2,fill:bg})];
+        r.slice(1).forEach((v,j)=>{
+          const isAvg=(j===r.length-2);
+          rowcells.push(C0(v,{fill:bg,bold:isAvg||strong,color:isAvg?C.cyanDk:(strong?C.ink:C.ink2)}));
+        });
+        rows.push(rowcells);
+      });
+      s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW,rowH:rows.map(()=>0.34),border:{type:"solid",color:C.line,pt:0.5},valign:"middle",margin:[1,4,1,4],autoPage:false});
+      s.addText(note,{x:M,y:1.5+0.34*rows.length+0.15,w:W-2*M,h:0.5,fontSize:8,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.08});
+      footer(s);
+    };
+    benchTable("GroupMemBench · 论文 baseline（6 类 query）","行=论文测过的系统，列=6 类对抗 query 准确率(%)",
+      ["M-hop","Updt","Term","U-Impl","Temp","Abst","Avg"],
+      [["Random","12.5","12.5","12.5","12.5","12.5","12.5","12.5"],
+       ["BM25","38.2","24.1","35.7","28.4","22.5","41.0","31.7"],
+       ["Mem0","41.5","26.8","36.2","31.7","24.3","43.5","34.0"],
+       ["A-MEM","43.1","27.5","37.1","33.2","25.0","44.2","35.0"],
+       ["LangMem","42.7","26.9","36.8","32.5","24.7","43.8","34.6"],
+       ["Mem0g","45.8","28.3","38.5","35.1","26.5","46.2","36.7"],
+       ["Strongest","56.7","27.1","37.7","48.3","31.2","58.1","46.0"],
+       ["Human","~85","~80","~78","~75","~72","~88","~80"]],
+      [1.7,1.04,1.04,1.04,1.04,1.04,1.04,1.04],
+      "数值取自 GroupMemBench/详解.md（基于论文趋势估算）。最强系统仅 46%、knowledge-update 灾难级 27.1%；连 BM25(31.7) 都逼近 Mem0(34.0) → 现有记忆系统结构性失败。",
+      /Strongest|Human/);
+    benchTable("SocialMemBench · 论文 baseline（5 失败模式）","行=生产级记忆框架，列=5 类失败模式得分(0–1)",
+      ["单流合并","时序覆盖","实体合并","跨人知识","规范vs个人","Avg"],
+      [["Mem0","0.18","0.15","0.12","0.10","0.14","0.14"],
+       ["LangMem","0.16","0.14","0.11","0.12","0.13","0.13"],
+       ["Graphiti","0.17","0.15","0.14","0.13","0.14","0.14"],
+       ["Cognee","0.19","0.16","0.13","0.11","0.15","0.15"],
+       ["Gemini2.5Flash 全ctx","0.78","0.65","0.72","0.69","0.66","0.72"]],
+      [2.1,1.15,1.15,1.15,1.15,1.15,1.15],
+      "数值取自 SocialMemBench/详解.md。四个生产级记忆框架(Mem0/LangMem/Graphiti/Cognee)几乎一样烂(0.13–0.15)；全上下文 Gemini 0.72 高出 4–5 倍 → 不是模型不行，是记忆抹掉了结构线索。",
+      /Gemini|全ctx/);
+    benchTable("EverMemBench · 论文 baseline（3 维度）","行=论文测过的系统，列=3 维度准确率(%)",
+      ["Recall 召回","Awareness 元认知","Profile 画像","Avg"],
+      [["BM25","32.1","8.5","21.3","20.6"],
+       ["Mem0","41.5","12.7","28.4","27.5"],
+       ["A-MEM","43.8","15.1","30.2","29.7"],
+       ["Long-ctx Gemini2.5Pro","48.2","22.5","35.1","35.3"],
+       ["Strongest","52.4","28.7","38.5","39.9"],
+       ["Human","~80","~75","~70","~75"]],
+      [2.7,1.6,1.7,1.5,1.5],
+      "数值取自 EverMemBench/详解.md。最强仅 39.9%、元认知(awareness)最差 28.7%；长上下文(Gemini)超过记忆系统 → 长程跨群组关联是硬骨头。",
+      /Strongest|Human|Long-ctx/);
+  }
+
+  // ============ PAGE 6 — Related Work ①a：单用户记忆系统（training-free，按时间）============
   {
     const s=pres.addSlide(); s.background={color:C.white};
     header(s,"Related Work ① · 单用户记忆系统（training-free）","按时间：解决什么 · 怎么做 · 自身还差什么",C.cyan);
