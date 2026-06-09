@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 # ★ 关键：本机 192 核，torch 默认用满全部线程 → 容器内超额订阅 → 单次 embedding 要 14s。
 #   必须在 import torch / sentence-transformers（mem0 会间接 import）之前限制线程数。
 #   实测：限到 8 线程后 embedding 从 14s 降到 0.01s（快上千倍）。
@@ -294,6 +295,10 @@ def main() -> int:
     agent_system = read_text(str(REPO / "prompts/hipporag_agent_system.txt"))
     judge_system = read_text(str(REPO / "prompts/hipporag_judge_system.txt"))
 
+    # 持久化目录规范化：默认 .mem0_chroma/<benchmark>，按数据集分目录、不混；集合名再带单元+条数。
+    persist_dir = args.persist_dir or str(HERE / ".mem0_chroma" / args.benchmark)
+    print(f"[存储] chroma 目录 = {persist_dir}；集合命名 = {args.benchmark}__<单元>__m<入库条数>")
+
     all_summary: Dict[str, Dict] = {}
     # 逐单元：建集合 → (复用或入库) → 该单元问答。每个单元自己的记忆库，互不串台。
     for unit, messages, questions in iter_units(args.benchmark, HERE, args.domain):
@@ -304,7 +309,7 @@ def main() -> int:
         collection = f"{args.benchmark}__{safe_unit}__m{len(messages)}"
         t0 = time.time()
         mem = build_mem0(args.llm_provider, args.agent_model, args.embed_model,
-                         collection=collection, persist_path=args.persist_dir,
+                         collection=collection, persist_path=persist_dir,
                          max_tokens=args.llm_max_tokens)
         print(f"\n=== [{args.benchmark}] 单元 {unit}：{len(messages)} 条消息 | "
               f"build_mem0 {time.time()-t0:.1f}s ===")
@@ -329,7 +334,8 @@ def main() -> int:
 
         summ = run_unit(args.benchmark, unit, questions, mem, client, args.agent_model,
                         args.judge_model, agent_system, judge_system, args.top_k,
-                        Path(args.results_dir), qtype=args.qtype, limit=args.limit)
+                        Path(args.results_dir), qtype=args.qtype, limit=args.limit,
+                        qa_workers=args.qa_workers)
         all_summary.update(summ)
 
     out = Path(args.results_dir, f"summary_mem0_{args.benchmark}.json")

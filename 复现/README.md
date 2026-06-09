@@ -12,6 +12,13 @@
 > 📖 **想看 BM25 vs Mem0 同一题的全流程对比 + 指标(EM/F1/judge)怎么算？读 [`BM25-vs-Mem0-全流程实例.md`](BM25-vs-Mem0-全流程实例.md)**。
 >
 > **Mem0 现已接 `bench_loaders`，三数据集(GroupMem/SocialMem/EverMem)全流程均可跑**（2026-06-09，各单 batch 冒烟通过；`run_mem0.py --benchmark {groupmem,socialmem,evermem}`）。
+>
+> **A-MEM (agiresearch/A-mem) 已适配复现** ✅（`run_amem.py`，2026-06-09 e2e 通过）：装官方包 + 两处补丁——
+> ① openai SDK 自动读 `OPENAI_BASE_URL` 指向 DeepSeek（需强制赋值，.env 里空 `OPENAI_API_KEY=` 会被 setdefault 卡住）；
+> ② A-MEM 原用 json_schema 结构化输出，DeepSeek 不支持→monkeypatch 改 `json_object`+调大 max_tokens。
+> ⚠️ A-MEM 每条消息 1 次推理 LLM 做笔记构建(~12s/条,串行)→**全量极贵**(SocialMem 7355 条≈24h)，需 `--max-messages` 截断。
+>
+> **HiPPoRAG (2.0.0a4) runner 已就绪** (`run_hipporag.py`)，待安装：依赖钉死(torch2.5.1/transformers4.45.2/vllm/igraph)→**须装独立 venv `venv_hippo`**(勿污染主环境)；vllm 非顶层可跳过；LLM 走 DeepSeek(`llm_base_url`)、嵌入用本地 Contriever(DeepSeek 无 embedding API)。
 
 ## 当前状态（2026-06-09）
 
