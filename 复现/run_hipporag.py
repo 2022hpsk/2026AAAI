@@ -25,6 +25,21 @@ from __future__ import annotations
 import os
 for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
     os.environ.setdefault(_v, "8")
+
+# ★ vllm 桩：HippoRAG.py 顶层会 import openie_vllm_offline → import vllm(要GPU/CUDA)。
+#   我们用 DeepSeek(OpenAI) 后端、根本不用 vllm，故注入假 vllm 满足 import，避免装重型 vllm。
+import sys as _sys, types as _types
+if "vllm" not in _sys.modules:
+    class _VStub:
+        def __init__(self, *a, **k): pass
+    _v = _types.ModuleType("vllm"); _v.SamplingParams = _VStub; _v.LLM = _VStub
+    _sys.modules["vllm"] = _v
+    for _m in ("vllm.model_executor", "vllm.model_executor.guided_decoding"):
+        _sys.modules[_m] = _types.ModuleType(_m)
+    _gf = _types.ModuleType("vllm.model_executor.guided_decoding.guided_fields")
+    _gf.GuidedDecodingRequest = _VStub
+    _sys.modules["vllm.model_executor.guided_decoding.guided_fields"] = _gf
+
 import argparse
 import json
 import sys

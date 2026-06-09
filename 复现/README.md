@@ -18,7 +18,12 @@
 > ② A-MEM 原用 json_schema 结构化输出，DeepSeek 不支持→monkeypatch 改 `json_object`+调大 max_tokens。
 > ⚠️ A-MEM 每条消息 1 次推理 LLM 做笔记构建(~12s/条,串行)→**全量极贵**(SocialMem 7355 条≈24h)，需 `--max-messages` 截断。
 >
-> **HiPPoRAG (2.0.0a4) runner 已就绪** (`run_hipporag.py`)，待安装：依赖钉死(torch2.5.1/transformers4.45.2/vllm/igraph)→**须装独立 venv `venv_hippo`**(勿污染主环境)；vllm 非顶层可跳过；LLM 走 DeepSeek(`llm_base_url`)、嵌入用本地 Contriever(DeepSeek 无 embedding API)。
+> **HiPPoRAG (2.0.0a4) 已适配复现 + e2e 通过** ✅(`run_hipporag.py`，2026-06-10，独立 conda env `hippo`)：
+> NER→DeepSeek OpenIE 抽三元组→建知识图谱→Contriever 嵌入→Personalized PageRank 检索→QA(1/1 通过)。
+> 安装(conda 隔离，不污染主环境)：`conda create -n hippo python=3.10`；`pip install hipporag==2.0.0a4 --no-deps`；
+> 补依赖 `torch==2.5.1(cpu) transformers==4.45.2 openai litellm networkx python-igraph tiktoken pydantic tenacity einops gritlm pandas scikit-learn accelerate pyarrow sentence-transformers`(**跳过 vllm**)；
+> `run_hipporag.py` 顶部注入 **vllm 桩**(HippoRAG 顶层 import vllm，但我们用 DeepSeek 后端不需要)。
+> LLM 走 DeepSeek(`llm_base_url`)；嵌入默认本地 Contriever(CPU)，或用 `embed_server.py`(本地 Qwen 嵌入服务,OpenAI兼容)替换。
 
 ## 当前状态（2026-06-09）
 
@@ -117,13 +122,15 @@ _每次评分跑完后填到这里。格式：`baseline | judge 模型 | 各类 
 - 全量预估@16并发：GroupMem(745)~6min + EverMem(2400)~18min + SocialMem(1031)~12min ≈ 共 ~35min。
 
 ### BM25 —— 全量结果（DeepSeek deepseek-v4-flash 做 agent+judge；指标由 compute_metrics.py 重算，含时间戳）
-**三数据集 BM25 全量结果（2026-06-09，metrics_*.json，含时间戳）**：
+**三数据集 BM25 vs Mem0 全量对比（2026-06-10，metrics_*.json，含时间戳）** —— 详细按类别表见 [`实验结果.md`](实验结果.md)：
 
-| Benchmark | 题数 | judge准确率 | EM | F1 | 归属acc | 不明率 | 全量墙钟(16并发) |
-|---|---|---|---|---|---|---|---|
-| GroupMemBench | 745 | **44.6%** | 13.8% | 25.0% | N/A(n=1) | 0.3% | 433s |
-| SocialMemBench | 1031 | **28.6%** | 3.6% | 15.7% | 39.9%(n=1027) | 0.4% | 724s |
-| EverMemBench | 2400 | **52.5%** | 4.8% | 9.9% | 10.3%(n=1073) | 0.5% | 2184s |
+| Benchmark | 题数 | BM25 judge acc | Mem0 judge acc | BM25 EM/F1 | 关键发现 |
+|---|---|---|---|---|---|
+| GroupMemBench | 745 | **44.6%** | 跑ing | 13.8 / 25.0 | ≈追平论文最强 46% |
+| SocialMemBench | 1031 | **28.6%** | **13.7%** | 3.6 / 15.7 | **BM25 完胜 Mem0**；Mem0∈论文 0.12–0.18 |
+| EverMemBench | 2400 | **52.5%** | 跑ing | 4.8 / 9.9 | MC 64% / 开放式 27%(≈oracle 26%) |
+
+SocialMemBench 按类别 BM25/Mem0（acc）：Q4归属 66/11 · Q5 ToM 38/3 · Q7关系 30/9 · Q1单人 25/21 · Q8时间 21/12 · 总体 28.6/13.7（差距最大在归属/ToM/关系——Mem0 有损抽取丢精确归属，正是 speaker-grounded 要补的）。
 
 按类别要点：
 - GroupMem：abstention 89.9% / user_implicit 46.9% / multi_hop 41.8% / temporal 41.4% / knowledge_update 23.4% / term_ambiguity 15.1%。

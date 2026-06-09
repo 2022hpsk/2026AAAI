@@ -16,7 +16,7 @@ const C = {
   violet:"6D5BD0", violetBg:"ECE9FB",
 };
 const F = { head:"Microsoft YaHei", body:"Microsoft YaHei", num:"Arial Black" };
-const W=10, H=5.625, M=0.5, TOTAL=12;
+const W=10, H=5.625, M=0.5, TOTAL=13;
 const RECT="rect", ROUND="roundRect", OVAL="ellipse", LINE="line";
 const mkShadow = () => ({ type:"outer", color:"0F172A", blur:8, offset:3, angle:135, opacity:0.12 });
 
@@ -396,21 +396,56 @@ async function main(){
   {
     const s=pres.addSlide(); s.background={color:C.white};
     header(s,"P4 · 复现进度（DeepSeek 实测，2026-06-09）","BM25 三数据集全量：连关键词检索都很能打",C.green);
+    const C0=(t,o={})=>TC(t,{align:"center",...o});
     const rows=[
-      [TH("Benchmark"),TH("题数"),TH("judge准确率"),TH("EM"),TH("F1"),TH("关键发现")],
-      [TC("GroupMemBench",{bold:true,color:C.ink}),TC("745",{align:"center"}),TC("44.6%",{bold:true,color:C.cyanDk,align:"center"}),TC("13.8",{align:"center"}),TC("25.0",{align:"center"}),TC("≈ 追平论文最强 46%",{color:C.red,bold:true})],
-      [TC("SocialMemBench",{bold:true,color:C.ink,fill:C.panel2}),TC("1031",{align:"center",fill:C.panel2}),TC("28.6%",{bold:true,color:C.cyanDk,align:"center",fill:C.panel2}),TC("3.6",{align:"center",fill:C.panel2}),TC("15.7",{align:"center",fill:C.panel2}),TC("> 开源记忆系统 0.12–0.18",{color:C.red,bold:true,fill:C.panel2})],
-      [TC("EverMemBench",{bold:true,color:C.ink}),TC("2400",{align:"center"}),TC("52.5%",{bold:true,color:C.cyanDk,align:"center"}),TC("4.8",{align:"center"}),TC("9.9",{align:"center"}),TC("MC 64% / 开放式 27%(≈oracle)",{color:C.ink2})],
+      [TH("Benchmark"),TH("题数"),TH("BM25 acc"),TH("Mem0 acc"),TH("BM25 EM/F1"),TH("关键发现")],
+      [TC("GroupMemBench",{bold:true,color:C.ink}),C0("745"),C0("44.6%",{bold:true,color:C.cyanDk}),C0("跑ing",{color:C.muted}),C0("13.8 / 25.0"),TC("≈ 追平论文最强 46%",{color:C.red,bold:true})],
+      [TC("SocialMemBench",{bold:true,color:C.ink,fill:C.panel2}),C0("1031",{fill:C.panel2}),C0("28.6%",{bold:true,color:C.cyanDk,fill:C.panel2}),C0("13.7%",{bold:true,color:C.amberDk,fill:C.panel2}),C0("3.6 / 15.7",{fill:C.panel2}),TC("BM25 完胜 Mem0；Mem0∈0.12–0.18",{color:C.red,bold:true,fill:C.panel2})],
+      [TC("EverMemBench",{bold:true,color:C.ink}),C0("2400"),C0("52.5%",{bold:true,color:C.cyanDk}),C0("跑ing",{color:C.muted}),C0("4.8 / 9.9"),TC("MC 64% / 开放式 27%(≈oracle)",{color:C.ink2})],
     ];
-    s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[1.95,0.8,1.55,0.7,0.7,3.3],rowH:[0.34,0.5,0.5,0.5],border:{type:"solid",color:C.line,pt:0.75},valign:"middle",margin:[2,5,2,5],autoPage:false});
-    s.addText("指标统一：bench_loaders 把三数据集归一化为同一 schema(多选选项拼进问题)，judge准确率(主)/EM/F1/per-category 一套代码通吃；BM25+DeepSeek，16 并发。",
-      {x:M,y:3.55,w:W-2*M,h:0.4,fontSize:8.5,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.05});
+    s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[1.85,0.7,1.15,1.15,1.35,2.8],rowH:[0.34,0.5,0.5,0.5],border:{type:"solid",color:C.line,pt:0.75},valign:"middle",margin:[2,5,2,5],autoPage:false});
+    s.addText("指标统一：bench_loaders 归一化为同一 schema(多选拼进问题)，judge acc(主)/EM/F1/per-category 一套代码通吃；agent+judge 均 DeepSeek，16 并发；Mem0=并行无合并变体。详见下一页按类别表。",
+      {x:M,y:3.55,w:W-2*M,h:0.4,fontSize:8.3,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.05});
     card(s,M,4.05,W-2*M,0.86,{fill:C.amberBg,accent:C.amber,lineCol:null});
     s.addText([
       {text:"motivation 坐实：",options:{bold:true,color:C.amberDk}},
       {text:"BM25 单凭关键词就追平/超过现有记忆系统 → 现有系统在多方场景把 speaker-/audience-grounded 结构线索抹掉了。",options:{color:C.ink2}},
       {text:" Mem0 全量(并行抽取)对比进行中。",options:{color:C.muted}},
     ],{x:M+0.2,y:4.05,w:W-2*M-0.4,h:0.86,fontSize:9.5,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.1});
+    footer(s);
+  }
+
+  // ============ PAGE 13 — SocialMemBench 按类别 BM25 vs Mem0（详细）============
+  {
+    const s=pres.addSlide(); s.background={color:C.white};
+    header(s,"P4 · 详细结果（SocialMemBench 1031 题）","按 9 类拆：BM25 几乎全面压过 Mem0",C.green);
+    const C0=(t,o={})=>TC(t,{align:"center",fs:8.4,...o});
+    const D=[ // 类别, BM25 acc, Mem0 acc, BM25 F1, Mem0 F1, 大差距?
+      ["Q1 单人召回","25.3","20.9","13.8","12.0",false],
+      ["Q2 群体决策","24.7","14.8","10.3","7.4",false],
+      ["Q3 多人聚合","4.5","4.5","12.1","15.8",false],
+      ["Q4 归属探针","66.2","11.2","38.1","6.7",true],
+      ["Q5 ToM 揣测","38.0","3.3","18.7","10.4",true],
+      ["Q6 群规vs个人","25.9","25.9","14.5","12.3",false],
+      ["Q7 关系边","29.8","9.4","15.7","10.7",true],
+      ["Q8 时间漂移","20.6","12.2","12.2","10.4",false],
+      ["Q9 离群成员","10.0","10.0","8.2","10.4",false],
+    ];
+    const rows=[[TH("类别(Q1–Q9)"),TH("BM25 acc"),TH("Mem0 acc"),TH("BM25 F1"),TH("Mem0 F1")]];
+    D.forEach((r,i)=>{
+      const bg=i%2?C.panel2:C.white;
+      rows.push([TC(r[0],{bold:true,color:C.ink,fs:8.4,fill:bg}),
+        C0(r[1]+"%",{bold:true,color:r[5]?C.red:C.cyanDk,fill:bg}),C0(r[2]+"%",{color:C.amberDk,fill:bg}),
+        C0(r[3],{fill:bg}),C0(r[4],{fill:bg})]);
+    });
+    rows.push([TC("总体",{bold:true,color:C.white,fs:8.6,fill:C.dark}),
+      C0("28.6%",{bold:true,color:C.white,fill:C.dark}),C0("13.7%",{bold:true,color:C.white,fill:C.dark}),
+      C0("15.7",{color:C.white,fill:C.dark}),C0("10.5",{color:C.white,fill:C.dark})]);
+    s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[2.4,1.65,1.65,1.65,1.65],rowH:[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.32],border:{type:"solid",color:C.line,pt:0.5},valign:"middle",margin:[1,4,1,4],autoPage:false});
+    card(s,M,4.95,W-2*M,0.5,{fill:C.cyanBg,accent:C.cyan,lineCol:null});
+    s.addText([{text:"看点：",options:{bold:true,color:C.cyanDk}},
+      {text:"差距最大在 Q4 归属(66→11)、Q5 ToM(38→3)、Q7 关系(30→9) —— Mem0 有损抽取丢了精确归属/关系，正是 speaker-grounded 方法要补的。",options:{color:C.ink2}}],
+      {x:M+0.2,y:4.95,w:W-2*M-0.4,h:0.5,fontSize:8.6,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.05});
     footer(s);
   }
 

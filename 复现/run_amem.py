@@ -163,9 +163,11 @@ def main() -> int:
                         qtype=args.qtype, limit=args.limit, qa_workers=args.qa_workers)
         all_summary.update(summ)
 
+    from datetime import datetime
+    all_summary["_computed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     out = Path(args.results_dir, f"summary_amem_{args.benchmark}.json")
     out.write_text(json.dumps(all_summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n汇总写入 {out}")
+    print(f"\n汇总写入 {out}（{all_summary['_computed_at']}）")
     return 0
 
 
