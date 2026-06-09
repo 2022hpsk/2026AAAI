@@ -1,7 +1,7 @@
 # CLAUDE.md — 项目圣经 / 新会话记忆引导
 
 > **任何新 Claude Code 会话（含远程 SSH）先完整读本文件**，再按需展开读 `汇报V2-问题导向文档.md`、`SpeakerMem-R1-v2-方法spec.md`、`项目概览-SpeakerMem-R1.md`。读完本文件即可"继承记忆"、接着干。
-> 最近更新：2026-06-03。
+> 最近更新：2026-06-09（P4 已实质启动，见 §4.1 与 `复现/`）。
 
 ---
 
@@ -50,7 +50,7 @@
 | **P1 方法设计** | 三大贡献 + 5 层记忆 + 奖励 + 三阶段训练 | ✅ 完成（`SpeakerMem-R1-v2-方法spec.md`） |
 | **P2 论文骨架** | 7 章草稿 + BibTeX + 写作指南 | ✅ 完成（`论文草稿-*.md`，数字为占位符） |
 | **P3 代码框架** | 6 模块，dry-run/mock 通过 | ✅ 完成（`核心代码实现/`，**未真实训练**） |
-| **P4 复现 baseline + 合成数据** | Mem0/BM25 跑通、合成 200 条训练数据、Stage1 SFT | 🔜 **现在开始（你在这里）** |
+| **P4 复现 baseline + 合成数据** | Mem0/BM25 跑通、合成 200 条训练数据、Stage1 SFT | 🏃 **进行中（你在这里）**：BM25 已真实出数；Mem0 管线已通+已优化；三数据集已下；详见 §4.1 与 `复现/README.md` |
 | **P5 核心训练实验** | Stage2 Joint RL → Stage3 端到端（~4×A100） | ⏳ 未开始 |
 | **P6 主实验 + 消融** | 三多方 benchmark + LoCoMo 兼容性 + Top-3 消融 | ⏳ 未开始 |
 | **P7 回填数字 + 写作 + 投稿** | 填实验数字 → arXiv preprint → 投 AAAI | ⏳ 未开始 |
@@ -64,8 +64,25 @@
 
 - ✅ **纸面准备全部就位**：调研 + 方法 + 7 章论文 + 6 模块代码（dry-run 通过）。
 - ❌ **唯一硬缺口：真实实验一项没跑**（无训练数据、无算力投入）；论文里所有实验数字是占位符。这是距"强提交/Highlight"的唯一差距（自评：Novelty 9 / Significance 8.5 / **Soundness 6–7** / Clarity 8.5 / 综合 ~7.4–7.75）。
-- 🔜 **当前任务：进入 P4，开始复现**。优先做"梯队①"（见 §6）。
-- 🌐 **环境迁移中**：实验将在用户的**远程 SSH 机器**上做（GPU/数据在那边）。本仓库已 push 到 `github.com/2022hpsk/2026AAAI`，远程 `git clone/pull` 即可同步全部上下文。
+- 🏃 **当前任务：P4 梯队① 已实质推进**（见下 §4.1）。
+- 🌐 **实验机**：就在本机跑（`/home/jovyan/haobo_AAAI/2026AAAI`）；系统 python3 无 pip，用 `/opt/conda` python 建 venv；暂无 GPU（用户申请中，给 P5 训练）。LLM 用 **DeepSeek `deepseek-v4-flash`**（OpenAI 兼容，key 在 `复现/.env`）。**未经用户允许不真实调 API。**
+
+### 4.1 P4 进展实况（2026-06-09，详见 `复现/README.md` 与 `复现/数据与流程说明.md`）
+- **环境**：`复现/` venv + 依赖装好（rank-bm25 / anthropic / openai / datasets / mem0ai 2.0.4 / sentence-transformers / chromadb / torch CPU）。
+- **三个 benchmark 数据全部到位**（脚本可重建，数据 .gitignore）：
+  - GroupMemBench（github UCSB-NLP-Chang，数据在仓库内）：4 领域×~3万消息，**745 题**。
+  - SocialMemBench（HF anon4data/socialmembench）：43 网络/7355 轮/**1031 题**/430 人设；代码库见 anonymous.4open.science。
+  - EverMemBench（github EverMind-AI + HF EverMemBench-Dynamic）：1263 对话块/**2400 题**/170 人设。
+  - ⚠️ 项目自带 `evaluation.py`/旧文档里的 HF URL 是错的占位符，以上才是真实地址。
+- **LLM 接入 DeepSeek**：`复现/llm_clients.py` 把上游 OpenAI 形态调用路由到 DeepSeek/Anthropic/本地vLLM；`eval_patches.py` 抬高 token 预算 + pin temperature=0（上游给 gpt-5 调的 256/512 会截断 DeepSeek、temp0.2 不可复现）。
+- **BM25 baseline ✅ 三数据集全量出数**（DeepSeek 做 agent+judge，16 并发，指标 compute_metrics.py 重算带时间戳）：
+  - GroupMemBench 745 题 **44.6%**（≈追平论文最强 46%）/ SocialMemBench 1031 题 **28.6%**（超论文开源系统 0.12–0.18）/ EverMemBench 2400 题 **52.5%**(MC 64%+open 27%)。
+  - 指标：judge准确率(主)/EM/F1/per-category/归属acc(SocialMem 可算39.9%、GroupMem 因答案是日期 N/A) + 各阶段计时；不明率均<1%。
+  - ⚠️ judge 用 DeepSeek 非论文 gpt-5，绝对值有系统偏移、方向一致。
+- **Mem0 baseline ✅ 管线打通 + 已 profiling/诊断**：定位慢因=**192核致torch线程超额订阅**（检索14.5s→**0.02s**，限8线程）；入库可持久化复用（chroma+跳过重灌，已验证）；**0% 真因（抽取诊断坐实）= 截断丢事实**：batch=30 一次抽~30条事实，JSON+推理超8000token被砍断→半数批次存0条（Finance入库1000条仅存20条记忆→multi_hop 0%、仅abstention 80%）。内容/prompt 没问题（完整批次能抽出含日期/SLA/负责人的精确事实）。**修法=`--ingest-batch 30→8~10`（待跑）**。每域独立、QA只问本域→评Finance只需入库其30k；4域可并行（已加`--persist-dir`）。
+- **额外**：SocialMemBench/EverMemBench 的 loader、A-MEM/HippoRAG baseline 代码已就位（`复现/`）。
+- **汇报产物**：`复现/P4实验进度汇报.md`（文档）+ `复现/P4实验进度汇报.pptx`（PPT，`gen_p4_ppt.py` 生成；本机无 node 故未用 `汇报slides-build/gen.js` 约定，改用 python-pptx 套同款调色板）。
+- **下一步**：① 验证 Mem0 抽取非空后跑适中规模；② BM25 全量 745 题（便宜、坐实 motivation）；③ 合成训练数据 + Stage1 SFT。
 
 ---
 

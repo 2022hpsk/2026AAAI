@@ -1,0 +1,14 @@
+# GroupMemBench 复现（P4 · 梯队①）—— Python 3.11，venv 来自 /opt/conda
+# --- BM25 路线（完全可跑；QA/judge 的 LLM 等 key）---
+rank-bm25>=0.2.2
+numpy>=1.24
+tqdm>=4.66
+openai>=1.30.0        # OpenAI 兼容客户端（也用于本地 vLLM 服务）
+anthropic>=0.40       # QA-agent + judge 走 Anthropic Messages API（需 ANTHROPIC_API_KEY）
+datasets>=2.0         # 下载 SocialMemBench（get_socialmembench.py）
+
+# --- Mem0 路线（已安装；见 run_mem0.py）---
+mem0ai>=2.0                 # 记忆系统 baseline（实测 2.0.4）
+sentence-transformers>=2.7 # 本地 CPU embedding（不需要 OpenAI embedding key，实测 5.5.1）
+chromadb>=0.5              # mem0 的本地向量库（实测 1.5.9）
+# 注：sentence-transformers 会带入 torch（实测 2.12.0，CPU 版即可，GPU 到位后自动用 GPU）

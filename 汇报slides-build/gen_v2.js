@@ -16,7 +16,7 @@ const C = {
   violet:"6D5BD0", violetBg:"ECE9FB",
 };
 const F = { head:"Microsoft YaHei", body:"Microsoft YaHei", num:"Arial Black" };
-const W=10, H=5.625, M=0.5, TOTAL=11;
+const W=10, H=5.625, M=0.5, TOTAL=12;
 const RECT="rect", ROUND="roundRect", OVAL="ellipse", LINE="line";
 const mkShadow = () => ({ type:"outer", color:"0F172A", blur:8, offset:3, angle:135, opacity:0.12 });
 
@@ -389,6 +389,28 @@ async function main(){
     });
     card(s,M,4.4,W-2*M,0.5,{fill:C.dark,accent:C.cyan,lineCol:null});
     s.addText([{text:"奖励 ",options:{bold:true,color:C.cyan}},{text:"R = 0.5·R_task + 0.8·R_state + 0.3·R_attr + 0.2·R_aud + …  ",options:{color:"DDE6F5",fontFace:"Consolas"}},{text:"（R_state 稠密、按说话人分桶，主导）",options:{color:C.faint}}],{x:M+0.2,y:4.4,w:W-2*M-0.4,h:0.5,fontSize:9,fontFace:F.body,margin:0,valign:"middle"});
+    footer(s);
+  }
+
+  // ============ PAGE 12 — P4 复现进度（BM25 实测）============
+  {
+    const s=pres.addSlide(); s.background={color:C.white};
+    header(s,"P4 · 复现进度（DeepSeek 实测，2026-06-09）","BM25 三数据集全量：连关键词检索都很能打",C.green);
+    const rows=[
+      [TH("Benchmark"),TH("题数"),TH("judge准确率"),TH("EM"),TH("F1"),TH("关键发现")],
+      [TC("GroupMemBench",{bold:true,color:C.ink}),TC("745",{align:"center"}),TC("44.6%",{bold:true,color:C.cyanDk,align:"center"}),TC("13.8",{align:"center"}),TC("25.0",{align:"center"}),TC("≈ 追平论文最强 46%",{color:C.red,bold:true})],
+      [TC("SocialMemBench",{bold:true,color:C.ink,fill:C.panel2}),TC("1031",{align:"center",fill:C.panel2}),TC("28.6%",{bold:true,color:C.cyanDk,align:"center",fill:C.panel2}),TC("3.6",{align:"center",fill:C.panel2}),TC("15.7",{align:"center",fill:C.panel2}),TC("> 开源记忆系统 0.12–0.18",{color:C.red,bold:true,fill:C.panel2})],
+      [TC("EverMemBench",{bold:true,color:C.ink}),TC("2400",{align:"center"}),TC("52.5%",{bold:true,color:C.cyanDk,align:"center"}),TC("4.8",{align:"center"}),TC("9.9",{align:"center"}),TC("MC 64% / 开放式 27%(≈oracle)",{color:C.ink2})],
+    ];
+    s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[1.95,0.8,1.55,0.7,0.7,3.3],rowH:[0.34,0.5,0.5,0.5],border:{type:"solid",color:C.line,pt:0.75},valign:"middle",margin:[2,5,2,5],autoPage:false});
+    s.addText("指标统一：bench_loaders 把三数据集归一化为同一 schema(多选选项拼进问题)，judge准确率(主)/EM/F1/per-category 一套代码通吃；BM25+DeepSeek，16 并发。",
+      {x:M,y:3.55,w:W-2*M,h:0.4,fontSize:8.5,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.05});
+    card(s,M,4.05,W-2*M,0.86,{fill:C.amberBg,accent:C.amber,lineCol:null});
+    s.addText([
+      {text:"motivation 坐实：",options:{bold:true,color:C.amberDk}},
+      {text:"BM25 单凭关键词就追平/超过现有记忆系统 → 现有系统在多方场景把 speaker-/audience-grounded 结构线索抹掉了。",options:{color:C.ink2}},
+      {text:" Mem0 全量(并行抽取)对比进行中。",options:{color:C.muted}},
+    ],{x:M+0.2,y:4.05,w:W-2*M-0.4,h:0.86,fontSize:9.5,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.1});
     footer(s);
   }
 

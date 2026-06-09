@@ -1,0 +1,23 @@
+# 上游 benchmark 克隆（含 152MB 数据）——用 setup.sh 重建，不入库
+GroupMemBench/
+# 下载的 SocialMemBench 数据——用 get_socialmembench.py 重建，不入库
+SocialMemBench/
+# Python 虚拟环境
+venv/
+__pycache__/
+*.pyc
+# 运行输出（数字记到 README，不入库原始结果）
+results/
+*.log
+# 密钥文件，绝不入库
+.env
+# mem0 本地向量库
+.mem0_chroma/
+.mem0*/
+
+# EverMemBench 代码库克隆 + 下载数据
+EverMemBench/
+EverMemBench-Dynamic/
+
+# SocialMemBench 匿名代码库(zip解压)
+SocialMemBench-code/
