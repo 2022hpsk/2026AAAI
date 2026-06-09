@@ -191,10 +191,11 @@ def ingest_parallel(mem: Any, ext_client: Any, model: str, messages: List[Dict],
 
 def run_unit(benchmark: str, unit: str, questions: List[dict], mem: Any, client: Any,
              agent_model: str, judge_model: str, agent_system: str, judge_system: str,
-             top_k: int, results_dir: Path, qtype: str = "all", limit: int = None) -> Dict[str, Dict]:
-    """对某个单元(域/网络/话题)的问题跑 Mem0 问答。questions 来自 bench_loaders(含 category)。
+             top_k: int, results_dir: Path, qtype: str = "all", limit: int = None,
+             qa_workers: int = 16) -> Dict[str, Dict]:
+    """对某个单元(域/网络/话题)的问题跑 Mem0 问答（**按题并行**，检索只读+每题无状态→无损）。
     检索用 user_id=unit（与入库一致）。结果写 results/<benchmark>/<unit>/mem0__<cat>.jsonl。"""
-    import time
+    from concurrent.futures import ThreadPoolExecutor
     # 按类别分组（可按 qtype 过滤、每类 limit）
     cats: Dict[str, List[dict]] = {}
     for q in questions:
@@ -202,46 +203,44 @@ def run_unit(benchmark: str, unit: str, questions: List[dict], mem: Any, client:
         if qtype != "all" and cat != qtype:
             continue
         cats.setdefault(cat, []).append(q)
-    summary: Dict[str, Dict] = {}
-    t_search = t_agent = t_judge = 0.0
+    tasks = []
     for cat, qs in cats.items():
-        if limit:
-            qs = qs[:limit]
+        for q in (qs[:limit] if limit else qs):
+            tasks.append((cat, q))
+
+    def _one(task):
+        cat, q = task
+        asker = q.get("asking_user_id") or ""
+        query = f"{asker} {q['question']}" if asker else q["question"]
+        hits = mem.search(query, top_k=top_k, filters={"user_id": unit}).get("results", [])
+        passages = "\n\n".join(f"[{i}] {h.get('memory','')}" for i, h in enumerate(hits, 1))
+        agent_user = (f"Asking user: {asker}\n\nQuestion:\n{q['question']}\n\n"
+                      f"Retrieved passages:\n{passages}\n\nAnswer the question using the retrieved passages.")
+        _, afinal = split_reasoning_and_final(call_chat(client, agent_model, agent_system, agent_user, 1024))
+        ju = f"Question:\n{q['question']}\n\nGold Answer:\n{q.get('answer','')}\n\nAgent Answer:\n{afinal}\n"
+        _, jfinal = split_reasoning_and_final(call_chat(client, judge_model, judge_system, ju, 512))
+        v = parse_judgment(jfinal)
+        return cat, {"id": q.get("id", ""), "query": q["question"], "gold": q.get("answer", ""),
+                     "agent_answer": afinal, "judge_answer": jfinal,
+                     "verdict": "correct" if v is True else "incorrect" if v is False else "unclear"}
+
+    by_cat: Dict[str, List[dict]] = {}
+    with ThreadPoolExecutor(max_workers=qa_workers) as ex:
+        for cat, rec in ex.map(_one, tasks):
+            by_cat.setdefault(cat, []).append(rec)
+
+    summary: Dict[str, Dict] = {}
+    for cat, recs in by_cat.items():
         out = results_dir / benchmark / unit / f"mem0__{cat}.jsonl"
         out.parent.mkdir(parents=True, exist_ok=True)
-        correct = total = 0
         with open(out, "w", encoding="utf-8") as f:
-            for q in qs:
-                asker = q.get("asking_user_id") or ""
-                query = f"{asker} {q['question']}" if asker else q["question"]
-                t0 = time.time()
-                hits = mem.search(query, top_k=top_k, filters={"user_id": unit}).get("results", [])
-                t_search += time.time() - t0
-                passages = "\n\n".join(f"[{i}] {h.get('memory','')}" for i, h in enumerate(hits, 1))
-                agent_user = (f"Asking user: {asker}\n\nQuestion:\n{q['question']}\n\n"
-                              f"Retrieved passages:\n{passages}\n\n"
-                              "Answer the question using the retrieved passages.")
-                t0 = time.time()
-                ao = call_chat(client, agent_model, agent_system, agent_user, 1024)
-                t_agent += time.time() - t0
-                _, afinal = split_reasoning_and_final(ao)
-                ju = (f"Question:\n{q['question']}\n\nGold Answer:\n{q.get('answer','')}\n\n"
-                      f"Agent Answer:\n{afinal}\n")
-                t0 = time.time()
-                jo = call_chat(client, judge_model, judge_system, ju, 512)
-                t_judge += time.time() - t0
-                _, jfinal = split_reasoning_and_final(jo)
-                ok = parse_judgment(jfinal)
-                total += 1
-                correct += 1 if ok is True else 0
-                f.write(json.dumps({"id": q.get("id", ""), "query": q["question"],
-                                    "gold": q.get("answer", ""), "agent_answer": afinal,
-                                    "judge_answer": jfinal}, ensure_ascii=False) + "\n")
-        acc = correct / total if total else 0.0
-        summary[f"{unit}/{cat}"] = {"accuracy": acc, "correct": correct, "total": total}
-        print(f"[mem0] {unit}/{cat}: acc={acc*100:.1f}% ({correct}/{total})")
-    summary["_timing"] = {"search_s": round(t_search, 1), "agent_s": round(t_agent, 1),
-                          "judge_s": round(t_judge, 1)}
+            for r in recs:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        c = sum(1 for r in recs if r["verdict"] == "correct")
+        summary[f"{unit}/{cat}"] = {"accuracy": c / len(recs) if recs else 0.0,
+                                    "correct": c, "total": len(recs)}
+    n = len(tasks); cc = sum(s["correct"] for s in summary.values())
+    print(f"[mem0] {unit}: {n} 题，acc {cc/n*100:.1f}% ({cc}/{n})")
     return summary
 
 
@@ -269,11 +268,10 @@ def main() -> int:
     ap.add_argument("--parallel-extract", type=int, default=1, metavar="N",
                     help="单域内并行抽取的 worker 数。>1 = 每批独立抽取(无跨批合并)并发跑，"
                          "数倍提速，代价是丢去重/知识更新覆盖(knowledge_update受损+冗余)。1 = 原版串行 additive。")
-    ap.add_argument("--persist-dir", default=str(HERE / ".mem0_chroma"),
-                    help="chroma 持久化目录。★并发要点：同一个域内 mem0 入库必须串行(读改写)，"
-                         "但不同域可并行——给每个并行进程一个独立目录即可安全并发，例如："
-                         "run_mem0 --domain Finance --persist-dir .mem0_chroma/Finance & "
-                         "run_mem0 --domain Technology --persist-dir .mem0_chroma/Technology &")
+    ap.add_argument("--persist-dir", default=None,
+                    help="chroma 持久化目录。默认 .mem0_chroma/<benchmark>（按数据集分目录、命名规范）。"
+                         "集合名=<benchmark>__<单元>__m<入库条数>。")
+    ap.add_argument("--qa-workers", type=int, default=16, help="问答阶段按题并行数(无状态,无损)")
     ap.add_argument("--results-dir", default=str(HERE / "results"))
     args = ap.parse_args()
 
