@@ -130,60 +130,66 @@ async function main(){
 
   // ============ PAGE 3/4/5 — 三个 benchmark 论文 baseline × 指标 详细表 ============
   {
-    const THc=(t)=>({text:t,options:{fill:{color:C.dark},color:C.white,bold:true,fontSize:8,align:"center",valign:"middle",fontFace:F.head}});
-    const benchTable=(title,sub,cols,data,colW,note,strongRe)=>{
+    const benchTable=(title,sub,cols,data,colW,note,strongRe,fs)=>{
+      fs=fs||8.0;
+      const THc=(t)=>({text:t,options:{fill:{color:C.dark},color:C.white,bold:true,fontSize:fs-0.6,align:"center",valign:"middle",fontFace:F.head}});
       const s=pres.addSlide(); s.background={color:C.white};
       header(s,title,sub,C.cyan);
-      const C0=(t,o={})=>TC(t,{align:"center",fs:8.2,...o});
-      const rows=[[TH("Method"),...cols.map(c=>THc(c))]];
+      const C0=(t,o={})=>TC(t,{align:"center",fs,...o});
+      const rows=[[TC("Method",{bold:true,color:C.white,fs,fill:C.dark}),...cols.map(c=>THc(c))]];
       data.forEach((r,i)=>{
         const bg=i%2?C.panel2:C.white;
-        const strong=strongRe.test(r[0]);
-        const rowcells=[TC(r[0],{bold:true,color:strong?C.cyanDk:C.ink,fs:8.2,fill:bg})];
+        const strong=strongRe&&strongRe.test(r[0]);
+        const rowcells=[TC(r[0],{bold:true,color:strong?C.cyanDk:C.ink,fs,fill:bg})];
         r.slice(1).forEach((v,j)=>{
           const isAvg=(j===r.length-2);
-          rowcells.push(C0(v,{fill:bg,bold:isAvg||strong,color:isAvg?C.cyanDk:(strong?C.ink:C.ink2)}));
+          rowcells.push(C0(v,{fill:bg,bold:isAvg||strong,color:isAvg?C.cyanDk:(strong?C.cyanDk:C.ink2)}));
         });
         rows.push(rowcells);
       });
-      s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW,rowH:rows.map(()=>0.34),border:{type:"solid",color:C.line,pt:0.5},valign:"middle",margin:[1,4,1,4],autoPage:false});
-      s.addText(note,{x:M,y:1.5+0.34*rows.length+0.15,w:W-2*M,h:0.5,fontSize:8,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.08});
+      s.addTable(rows,{x:M,y:1.45,w:W-2*M,colW,rowH:rows.map(()=>0.33),border:{type:"solid",color:C.line,pt:0.5},valign:"middle",margin:[1,3,1,3],autoPage:false});
+      s.addText(note,{x:M,y:1.45+0.33*rows.length+0.12,w:W-2*M,h:0.6,fontSize:7.8,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.1});
       footer(s);
     };
-    benchTable("GroupMemBench · 论文 baseline（6 类 query）","行=论文测过的系统，列=6 类对抗 query 准确率(%)",
-      ["M-hop","Updt","Term","U-Impl","Temp","Abst","Avg"],
-      [["Random","12.5","12.5","12.5","12.5","12.5","12.5","12.5"],
-       ["BM25","38.2","24.1","35.7","28.4","22.5","41.0","31.7"],
-       ["Mem0","41.5","26.8","36.2","31.7","24.3","43.5","34.0"],
-       ["A-MEM","43.1","27.5","37.1","33.2","25.0","44.2","35.0"],
-       ["LangMem","42.7","26.9","36.8","32.5","24.7","43.8","34.6"],
-       ["Mem0g","45.8","28.3","38.5","35.1","26.5","46.2","36.7"],
-       ["Strongest","56.7","27.1","37.7","48.3","31.2","58.1","46.0"],
-       ["Human","~85","~80","~78","~75","~72","~88","~80"]],
-      [1.7,1.04,1.04,1.04,1.04,1.04,1.04,1.04],
-      "数值取自 GroupMemBench/详解.md（基于论文趋势估算）。最强系统仅 46%、knowledge-update 灾难级 27.1%；连 BM25(31.7) 都逼近 Mem0(34.0) → 现有记忆系统结构性失败。",
-      /Strongest|Human/);
-    benchTable("SocialMemBench · 论文 baseline（5 失败模式）","行=生产级记忆框架，列=5 类失败模式得分(0–1)",
-      ["单流合并","时序覆盖","实体合并","跨人知识","规范vs个人","Avg"],
-      [["Mem0","0.18","0.15","0.12","0.10","0.14","0.14"],
-       ["LangMem","0.16","0.14","0.11","0.12","0.13","0.13"],
-       ["Graphiti","0.17","0.15","0.14","0.13","0.14","0.14"],
-       ["Cognee","0.19","0.16","0.13","0.11","0.15","0.15"],
-       ["Gemini2.5Flash 全ctx","0.78","0.65","0.72","0.69","0.66","0.72"]],
-      [2.1,1.15,1.15,1.15,1.15,1.15,1.15],
-      "数值取自 SocialMemBench/详解.md。四个生产级记忆框架(Mem0/LangMem/Graphiti/Cognee)几乎一样烂(0.13–0.15)；全上下文 Gemini 0.72 高出 4–5 倍 → 不是模型不行，是记忆抹掉了结构线索。",
-      /Gemini|全ctx/);
-    benchTable("EverMemBench · 论文 baseline（3 维度）","行=论文测过的系统，列=3 维度准确率(%)",
-      ["Recall 召回","Awareness 元认知","Profile 画像","Avg"],
-      [["BM25","32.1","8.5","21.3","20.6"],
-       ["Mem0","41.5","12.7","28.4","27.5"],
-       ["A-MEM","43.8","15.1","30.2","29.7"],
-       ["Long-ctx Gemini2.5Pro","48.2","22.5","35.1","35.3"],
-       ["Strongest","52.4","28.7","38.5","39.9"],
-       ["Human","~80","~75","~70","~75"]],
-      [2.7,1.6,1.7,1.5,1.5],
-      "数值取自 EverMemBench/详解.md。最强仅 39.9%、元认知(awareness)最差 28.7%；长上下文(Gemini)超过记忆系统 → 长程跨群组关联是硬骨头。",
-      /Strongest|Human|Long-ctx/);
+    // —— GroupMemBench：原论文 Table 2（arXiv 2605.14498），6 类 query 准确率(%) ——
+    benchTable("GroupMemBench · 论文 Table 2（6 类 query，准确率%）","行=论文测过的系统，列=6 类对抗 query + 平均；加粗=各列最优",
+      ["Multi-Hop","Update","Ambig","Implicit","Temporal","Abstain","Avg"],
+      [["BM25","40.11","25.23","14.15","40.82","54.94","77.98","43.22"],
+       ["text-embedding-3-large","36.26","23.36","21.70","46.94","32.72","75.23","38.04"],
+       ["GraphRAG","12.09","14.02","19.81","14.29","5.56","66.97","20.56"],
+       ["Mem0","21.98","4.67","11.32","20.41","16.67","82.57","25.73"],
+       ["MemGPT","22.53","17.76","20.75","28.57","12.42","77.98","28.15"],
+       ["A-Mem","35.16","22.43","26.42","46.94","23.46","67.89","35.10"],
+       ["HippoRAG","39.56","27.10","30.19","42.86","29.63","75.23","39.72"],
+       ["Hindsight","42.31","17.76","37.74","40.82","54.94","77.06","46.01"]],
+      [2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0],
+      "数据来源：GroupMemBench 原论文 Table 2。最强 Hindsight 46.01、BM25 43.22(第二) → 纯关键词检索逼近最强；记忆系统 Mem0 仅 25.73、Update 类灾难(Mem0 4.67)。",
+      /Hindsight/,8.0);
+    // —— SocialMemBench：原论文 Table 4（arXiv 2605.17789），9 类 + MeanQ（GPT-4o-mini 作答，0–1）——
+    benchTable("SocialMemBench · 论文 Table 4（9 类，0–1，GPT-4o-mini 作答）","上=参考上界；中=开源记忆框架；下=论文社交感知探针。MeanQ=按题加权",
+      ["SR","GD","MA","AP","TM","NI","RE","TS","DM","MeanQ"],
+      [["LLM-MINI 全上下文","0.34","0.65","0.12","0.75","0.31","0.59","0.23","0.28","0.38","0.369"],
+       ["Uncompressed 检索","0.34","0.63","0.12","0.82","0.21","0.44","0.24","0.24","0.34","0.345"],
+       ["Graphiti","0.11","0.61","0.06","0.46","0.05","0.41","0.12","0.07","0.00","0.178"],
+       ["LangMem","0.08","0.56","0.15","0.39","0.06","0.44","0.06","0.09","0.15","0.162"],
+       ["Mem0","0.11","0.57","0.05","0.31","0.05","0.24","0.06","0.07","0.10","0.143"],
+       ["Cognee","0.09","0.59","0.02","0.25","0.10","0.20","0.05","0.01","0.07","0.120"],
+       ["Subject-Mem(探针)","0.31","0.61","0.06","0.78","0.24","0.46","0.19","0.22","0.35","0.321"],
+       ["SMG(探针)","0.16","0.69","0.08","0.44","0.11","0.46","0.12","0.10","0.23","0.213"]],
+      [1.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,1.0],
+      "数据来源：SocialMemBench 原论文 Table 4。开源记忆框架仅 0.12–0.18，远低于 Uncompressed 检索 0.345 与全上下文 0.369 → 现有记忆把社交结构线索抹掉了。",
+      /MINI|Uncompressed/,7.6);
+    // —— EverMemBench：原论文 Table 4（arXiv 2602.01313），GPT-4.1-mini 作答，9 子指标+平均(%) ——
+    benchTable("EverMemBench · 论文 Table 4（GPT-4.1-mini 作答，准确率%）","召回(Single/Multi/Temp) · 元认知(Const/Proact/Update) · 画像(Style/Skill/Role) + 平均",
+      ["Single","Multi","Temp","Const","Proact","Updt","Style","Skill","Role","Avg"],
+      [["Full Context","83.57","2.41","7.00","63.43","25.06","42.54","39.20","35.50","38.27","37.44"],
+       ["+MemoBase","60.09","12.85","18.00","64.68","36.77","30.60","17.05","29.59","38.78","34.27"],
+       ["+Mem0","55.40","11.24","6.33","66.17","52.46","51.87","22.73","31.36","36.22","37.09"],
+       ["+Zep","73.71","8.03","13.00","67.16","47.54","43.66","26.70","35.50","44.39","39.97"],
+       ["+MemOS","71.36","18.88","15.67","69.90","51.99","45.15","28.98","32.54","48.47","42.55"]],
+      [1.4,0.76,0.76,0.76,0.76,0.76,0.76,0.76,0.76,0.76,0.76],
+      "数据来源：EverMemBench 原论文 Table 4(GPT-4.1-mini 作答)。最强记忆 MemOS 仅 42.55；Multi-hop 召回灾难(2–19%)、记忆更新弱。另:Llama4 Full 40.18 / Gemini3-Flash Full 72.61(全上下文远超记忆系统)。",
+      /Full Context/,7.7);
   }
 
   // ============ PAGE 6 — Related Work ①a：单用户记忆系统（training-free，按时间）============
@@ -457,9 +463,9 @@ async function main(){
     const C0=(t,o={})=>TC(t,{align:"center",...o});
     const rows=[
       [TH("Benchmark"),TH("题数"),TH("BM25 acc"),TH("Mem0 acc"),TH("BM25 EM/F1"),TH("关键发现")],
-      [TC("GroupMemBench",{bold:true,color:C.ink}),C0("745"),C0("44.6%",{bold:true,color:C.cyanDk}),C0("跑ing",{color:C.muted}),C0("13.8 / 25.0"),TC("≈ 追平论文最强 46%",{color:C.red,bold:true})],
+      [TC("GroupMemBench",{bold:true,color:C.ink}),C0("745"),C0("44.6%",{bold:true,color:C.cyanDk}),C0("21.6%",{bold:true,color:C.amberDk}),C0("13.8 / 25.0"),TC("BM25 远超 Mem0(论文同)",{color:C.red,bold:true})],
       [TC("SocialMemBench",{bold:true,color:C.ink,fill:C.panel2}),C0("1031",{fill:C.panel2}),C0("28.6%",{bold:true,color:C.cyanDk,fill:C.panel2}),C0("13.7%",{bold:true,color:C.amberDk,fill:C.panel2}),C0("3.6 / 15.7",{fill:C.panel2}),TC("BM25 完胜 Mem0；Mem0∈0.12–0.18",{color:C.red,bold:true,fill:C.panel2})],
-      [TC("EverMemBench",{bold:true,color:C.ink}),C0("2400"),C0("52.5%",{bold:true,color:C.cyanDk}),C0("跑ing",{color:C.muted}),C0("4.8 / 9.9"),TC("MC 64% / 开放式 27%(≈oracle)",{color:C.ink2})],
+      [TC("EverMemBench",{bold:true,color:C.ink}),C0("2400"),C0("52.5%",{bold:true,color:C.cyanDk}),C0("19.9%",{bold:true,color:C.amberDk}),C0("4.8 / 9.9"),TC("BM25 远超 Mem0",{color:C.red,bold:true})],
     ];
     s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[1.85,0.7,1.15,1.15,1.35,2.8],rowH:[0.34,0.5,0.5,0.5],border:{type:"solid",color:C.line,pt:0.75},valign:"middle",margin:[2,5,2,5],autoPage:false});
     s.addText("指标统一：bench_loaders 归一化为同一 schema(多选拼进问题)，judge acc(主)/EM/F1/per-category 一套代码通吃；agent+judge 均 DeepSeek，16 并发；Mem0=并行无合并变体。详见下一页按类别表。",
@@ -468,7 +474,7 @@ async function main(){
     s.addText([
       {text:"motivation 坐实：",options:{bold:true,color:C.amberDk}},
       {text:"BM25 单凭关键词就追平/超过现有记忆系统 → 现有系统在多方场景把 speaker-/audience-grounded 结构线索抹掉了。",options:{color:C.ink2}},
-      {text:" Mem0 全量(并行抽取)对比进行中。",options:{color:C.muted}},
+      {text:"BM25 三数据集全面碾压 Mem0(44.6>21.6/28.6>13.7/52.5>19.9)。",options:{color:C.muted}},
     ],{x:M+0.2,y:4.05,w:W-2*M-0.4,h:0.86,fontSize:9.5,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.1});
     footer(s);
   }
