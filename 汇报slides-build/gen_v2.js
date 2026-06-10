@@ -16,7 +16,7 @@ const C = {
   violet:"6D5BD0", violetBg:"ECE9FB",
 };
 const F = { head:"Microsoft YaHei", body:"Microsoft YaHei", num:"Arial Black" };
-const W=10, H=5.625, M=0.5, TOTAL=16;
+const W=10, H=5.625, M=0.5, TOTAL=17;
 const RECT="rect", ROUND="roundRect", OVAL="ellipse", LINE="line";
 const mkShadow = () => ({ type:"outer", color:"0F172A", blur:8, offset:3, angle:135, opacity:0.12 });
 
@@ -459,57 +459,89 @@ async function main(){
   // ============ PAGE 12 — P4 复现进度（BM25 实测）============
   {
     const s=pres.addSlide(); s.background={color:C.white};
-    header(s,"P4 · 复现进度（DeepSeek 实测，2026-06-09）","BM25 三数据集全量：连关键词检索都很能打",C.green);
+    header(s,"P4 · 复现进度（DeepSeek 实测，2026-06-10）","四基线全量：Mem0 全场垫底；SocialMem 上图记忆反超",C.green);
     const C0=(t,o={})=>TC(t,{align:"center",...o});
     const rows=[
-      [TH("Benchmark"),TH("题数"),TH("BM25 acc"),TH("Mem0 acc"),TH("BM25 EM/F1"),TH("关键发现")],
-      [TC("GroupMemBench",{bold:true,color:C.ink}),C0("745"),C0("44.6%",{bold:true,color:C.cyanDk}),C0("21.6%",{bold:true,color:C.amberDk}),C0("13.8 / 25.0"),TC("BM25 远超 Mem0(论文同)",{color:C.red,bold:true})],
-      [TC("SocialMemBench",{bold:true,color:C.ink,fill:C.panel2}),C0("1031",{fill:C.panel2}),C0("28.6%",{bold:true,color:C.cyanDk,fill:C.panel2}),C0("13.7%",{bold:true,color:C.amberDk,fill:C.panel2}),C0("3.6 / 15.7",{fill:C.panel2}),TC("BM25 完胜 Mem0；Mem0∈0.12–0.18",{color:C.red,bold:true,fill:C.panel2})],
-      [TC("EverMemBench",{bold:true,color:C.ink}),C0("2400"),C0("52.5%",{bold:true,color:C.cyanDk}),C0("19.9%",{bold:true,color:C.amberDk}),C0("4.8 / 9.9"),TC("BM25 远超 Mem0",{color:C.red,bold:true})],
+      [TH("Benchmark"),TH("题数"),TH("BM25"),TH("Mem0"),TH("A-MEM"),TH("HippoRAG"),TH("关键发现")],
+      [TC("GroupMemBench",{bold:true,color:C.ink}),C0("745"),C0("44.6%",{bold:true,color:C.cyanDk}),C0("21.6%",{bold:true,color:C.amberDk}),C0("—",{color:C.muted}),C0("—",{color:C.muted}),TC("BM25 远超 Mem0(论文同)",{color:C.ink2})],
+      [TC("SocialMemBench",{bold:true,color:C.ink,fill:C.panel2}),C0("1031",{fill:C.panel2}),C0("28.6%",{color:C.ink2,fill:C.panel2}),C0("13.7%",{bold:true,color:C.amberDk,fill:C.panel2}),C0("48.1%",{bold:true,color:C.cyanDk,fill:C.panel2}),C0("59.0%",{bold:true,color:C.green,fill:C.panel2}),TC("图记忆反超 BM25；Mem0 仍垫底",{color:C.red,bold:true,fill:C.panel2})],
+      [TC("EverMemBench",{bold:true,color:C.ink}),C0("2400"),C0("52.5%",{bold:true,color:C.cyanDk}),C0("19.9%",{bold:true,color:C.amberDk}),C0("跑中",{color:C.muted}),C0("跑中",{color:C.muted}),TC("BM25 远超 Mem0",{color:C.ink2})],
     ];
-    s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[1.85,0.7,1.15,1.15,1.35,2.8],rowH:[0.34,0.5,0.5,0.5],border:{type:"solid",color:C.line,pt:0.75},valign:"middle",margin:[2,5,2,5],autoPage:false});
-    s.addText("指标统一：bench_loaders 归一化为同一 schema(多选拼进问题)，judge acc(主)/EM/F1/per-category 一套代码通吃；agent+judge 均 DeepSeek，16 并发；Mem0=并行无合并变体。详见下一页按类别表。",
-      {x:M,y:3.55,w:W-2*M,h:0.4,fontSize:8.3,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.05});
-    card(s,M,4.05,W-2*M,0.86,{fill:C.amberBg,accent:C.amber,lineCol:null});
+    s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[1.75,0.62,0.92,0.92,0.92,1.05,2.82],rowH:[0.34,0.52,0.52,0.52],border:{type:"solid",color:C.line,pt:0.75},valign:"middle",margin:[2,4,2,4],autoPage:false});
+    s.addText("口径：judge acc(主)，agent+judge 均 DeepSeek、16 并发；Mem0=并行无合并变体；A-MEM/HippoRAG 检索 top-k=10 passage(各8条)上下文更大、judge 偏宽松→绝对值偏高，相对排序为准。GroupMem/EverMem 的图记忆全量待跑。",
+      {x:M,y:3.58,w:W-2*M,h:0.42,fontSize:8,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.05});
+    card(s,M,4.08,W-2*M,0.86,{fill:C.amberBg,accent:C.amber,lineCol:null});
     s.addText([
-      {text:"motivation 坐实：",options:{bold:true,color:C.amberDk}},
-      {text:"BM25 单凭关键词就追平/超过现有记忆系统 → 现有系统在多方场景把 speaker-/audience-grounded 结构线索抹掉了。",options:{color:C.ink2}},
-      {text:"BM25 三数据集全面碾压 Mem0(44.6>21.6/28.6>13.7/52.5>19.9)。",options:{color:C.muted}},
-    ],{x:M+0.2,y:4.05,w:W-2*M-0.4,h:0.86,fontSize:9.5,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.1});
+      {text:"叙事升级：",options:{bold:true,color:C.amberDk}},
+      {text:"不是「记忆系统都没用」，而是「摧毁 speaker-grounding 的摘要式记忆(Mem0，三场全垫底)失败、保留 who-said-what 结构的图记忆(HippoRAG 59/A-MEM 48，反超 BM25 29)有效」",options:{color:C.ink2}},
+      {text:" → 正是 SpeakerMem-R1（speaker-grounded 结构化记忆+RL）的直接动机。",options:{bold:true,color:C.red}},
+    ],{x:M+0.2,y:4.08,w:W-2*M-0.4,h:0.86,fontSize:9.2,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.1});
     footer(s);
   }
 
   // ============ PAGE 13 — SocialMemBench 按类别 BM25 vs Mem0（详细）============
   {
     const s=pres.addSlide(); s.background={color:C.white};
-    header(s,"P4 · 详细结果（SocialMemBench 1031 题）","按 9 类拆：BM25 几乎全面压过 Mem0",C.green);
-    const C0=(t,o={})=>TC(t,{align:"center",fs:8.4,...o});
-    const D=[ // 类别, BM25 acc, Mem0 acc, BM25 F1, Mem0 F1, 大差距?
-      ["Q1 单人召回","25.3","20.9","13.8","12.0",false],
-      ["Q2 群体决策","24.7","14.8","10.3","7.4",false],
-      ["Q3 多人聚合","4.5","4.5","12.1","15.8",false],
-      ["Q4 归属探针","66.2","11.2","38.1","6.7",true],
-      ["Q5 ToM 揣测","38.0","3.3","18.7","10.4",true],
-      ["Q6 群规vs个人","25.9","25.9","14.5","12.3",false],
-      ["Q7 关系边","29.8","9.4","15.7","10.7",true],
-      ["Q8 时间漂移","20.6","12.2","12.2","10.4",false],
-      ["Q9 离群成员","10.0","10.0","8.2","10.4",false],
+    header(s,"P4 · 详细结果（SocialMemBench 1031 题，四基线全量）","按 9 类拆：Mem0 全垫底；HippoRAG/A-MEM 在归属·ToM·关系类大幅领先",C.green);
+    const C0=(t,o={})=>TC(t,{align:"center",fs:8.2,...o});
+    const D=[ // 类别, BM25, Mem0, A-MEM, HippoRAG, 高亮(谁最强)
+      ["Q1 单人召回","25.3","20.9","56.2","62.3"],
+      ["Q2 群体决策","24.7","14.8","33.3","34.6"],
+      ["Q3 多人聚合","4.5","4.5","4.5","0.0"],
+      ["Q4 归属探针","66.2","11.2","66.2","70.0"],
+      ["Q5 ToM 揣测","38.0","3.3","60.9","73.9"],
+      ["Q6 群规vs个人","25.9","25.9","33.3","46.3"],
+      ["Q7 关系边","29.8","9.4","51.9","63.0"],
+      ["Q8 时间漂移","20.6","12.2","39.3","58.8"],
+      ["Q9 离群成员","10.0","10.0","40.0","80.0"],
     ];
-    const rows=[[TH("类别(Q1–Q9)"),TH("BM25 acc"),TH("Mem0 acc"),TH("BM25 F1"),TH("Mem0 F1")]];
+    const rows=[[TH("类别(Q1–Q9)"),TH("BM25"),TH("Mem0"),TH("A-MEM"),TH("HippoRAG")]];
     D.forEach((r,i)=>{
       const bg=i%2?C.panel2:C.white;
-      rows.push([TC(r[0],{bold:true,color:C.ink,fs:8.4,fill:bg}),
-        C0(r[1]+"%",{bold:true,color:r[5]?C.red:C.cyanDk,fill:bg}),C0(r[2]+"%",{color:C.amberDk,fill:bg}),
-        C0(r[3],{fill:bg}),C0(r[4],{fill:bg})]);
+      const vals=[+r[1],+r[2],+r[3],+r[4]]; const mx=Math.max(...vals);
+      const cell=(v,j)=>C0(v+"%",{bold:(+v===mx&&mx>0),color:(+v===mx&&mx>0)?C.green:(j===1?C.amberDk:C.ink2),fill:bg});
+      rows.push([TC(r[0],{bold:true,color:C.ink,fs:8.2,fill:bg}),cell(r[1],0),cell(r[2],1),cell(r[3],2),cell(r[4],3)]);
     });
-    rows.push([TC("总体",{bold:true,color:C.white,fs:8.6,fill:C.dark}),
-      C0("28.6%",{bold:true,color:C.white,fill:C.dark}),C0("13.7%",{bold:true,color:C.white,fill:C.dark}),
-      C0("15.7",{color:C.white,fill:C.dark}),C0("10.5",{color:C.white,fill:C.dark})]);
+    rows.push([TC("总体",{bold:true,color:C.white,fs:8.4,fill:C.dark}),
+      C0("28.6%",{color:C.white,fill:C.dark}),C0("13.7%",{bold:true,color:C.white,fill:C.dark}),
+      C0("48.1%",{bold:true,color:C.white,fill:C.dark}),C0("59.0%",{bold:true,color:C.cyan,fill:C.dark})]);
     s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[2.4,1.65,1.65,1.65,1.65],rowH:[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.32],border:{type:"solid",color:C.line,pt:0.5},valign:"middle",margin:[1,4,1,4],autoPage:false});
     card(s,M,4.95,W-2*M,0.5,{fill:C.cyanBg,accent:C.cyan,lineCol:null});
     s.addText([{text:"看点：",options:{bold:true,color:C.cyanDk}},
-      {text:"差距最大在 Q4 归属(66→11)、Q5 ToM(38→3)、Q7 关系(30→9) —— Mem0 有损抽取丢了精确归属/关系，正是 speaker-grounded 方法要补的。",options:{color:C.ink2}}],
-      {x:M+0.2,y:4.95,w:W-2*M-0.4,h:0.5,fontSize:8.6,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.05});
+      {text:"Mem0 每类垫底/并列垫底；Q5 ToM(3→74)、Q9 离群(10→80)、Q7 关系(9→63)、Q4 归属(11→70) 图记忆碾压。唯 Q3 多人聚合四家全崩(≤4.5)——结构化记忆也没解决的硬骨头。",options:{color:C.ink2}}],
+      {x:M+0.2,y:4.95,w:W-2*M-0.4,h:0.5,fontSize:8.4,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.04});
+    footer(s);
+  }
+
+  // ============ PAGE 14 — Mem0 失效根因（检索级归因）============
+  {
+    const s=pres.addSlide(); s.background={color:C.white};
+    header(s,"P4 · Mem0 为何失效（重建两边检索内容归因）","对 BM25对/Mem0错 的题，看 Mem0 记忆里到底丢了什么",C.red);
+    const R=[
+      [C.cyan,"① 字面值被摘要抹平","截止日 2025-07-18 → Mem0 记忆全是「谁负责审批」，无此日期","时序 +38.9"],
+      [C.violet,"② 属性-实体绑定断裂","一堆日期没一条绑到「UX Approval 阶段」→ 张冠李戴","多跳 +34.6"],
+      [C.amber,"③ 说话人/归属丢失","「谁反对圣诞日期」=Emeka；Mem0 只剩「谁要什么菜」","Q4 归属 +55.0"],
+      [C.green,"④ 言语行为被丢","「Bev 替 Cass 问素食」动作没了，只留高频观鸟话题","Q5 ToM +34.8"],
+      [C.cyanDk,"⑤ 关系边缺失+显著性偏置","Priya–Lena 亲密关系→Mem0 答「无特定关系」","Q7 关系 +20.4"],
+      [C.red,"⑥ 更新不追踪","新旧合并做法并存，「当前做法」答成旧的","知识更新 +17.8"],
+    ];
+    const cw=(W-2*M-2*0.24)/3, ch=1.32;
+    R.forEach((e,i)=>{
+      const col=i%3,row=Math.floor(i/3);
+      const x=M+col*(cw+0.24),y=1.5+row*(ch+0.16);
+      card(s,x,y,cw,ch,{accent:e[0]});
+      s.addText(e[1],{x:x+0.16,y:y+0.1,w:cw-0.3,h:0.5,fontSize:10,bold:true,color:e[0],fontFace:F.head,margin:0,valign:"top",lineSpacingMultiple:0.98});
+      s.addText(e[2],{x:x+0.16,y:y+0.56,w:cw-0.3,h:0.5,fontSize:8,color:C.ink2,fontFace:F.body,margin:0,valign:"top",lineSpacingMultiple:1.04});
+      card(s,x+0.16,y+ch-0.32,cw-0.32,0.22,{fill:C.panel,shadow:false,lineCol:null});
+      s.addText([{text:"缺口 ",options:{color:C.muted}},{text:e[3]+" pt",options:{bold:true,color:e[0]}}],{x:x+0.24,y:y+ch-0.33,w:cw-0.4,h:0.22,fontSize:7.2,fontFace:F.body,margin:0,valign:"middle"});
+    });
+    card(s,M,4.5,W-2*M,0.92,{fill:C.dark,accent:C.cyan,lineCol:null});
+    s.addText([
+      {text:"本质：",options:{bold:true,color:C.cyan}},
+      {text:"Mem0 不是「检索差」，而是入库时 LLM 摘要把多方对话最关键的三样——精确字面值 / 说话人归属 / 人际关系——压缩没了。",options:{color:"DDE6F5"}},
+      {text:"\nBM25 赢=逐字原文+全元数据不丢；HippoRAG/A-MEM 赢=建实体-关系图/笔记链接，保 who-said-what。",options:{color:C.faint}},
+      {text:" → 直接、可量化地论证 speaker-grounded 结构化记忆的必要。",options:{bold:true,color:C.cyan}},
+    ],{x:M+0.2,y:4.5,w:W-2*M-0.4,h:0.92,fontSize:9,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.12});
     footer(s);
   }
 

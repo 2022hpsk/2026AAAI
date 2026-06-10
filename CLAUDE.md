@@ -80,6 +80,12 @@
   - 指标：judge准确率(主)/EM/F1/per-category/归属acc(SocialMem 可算39.9%、GroupMem 因答案是日期 N/A) + 各阶段计时；不明率均<1%。
   - ⚠️ judge 用 DeepSeek 非论文 gpt-5，绝对值有系统偏移、方向一致。
 - **Mem0 baseline ✅ 管线打通 + 已 profiling/诊断**：定位慢因=**192核致torch线程超额订阅**（检索14.5s→**0.02s**，限8线程）；入库可持久化复用（chroma+跳过重灌，已验证）；**0% 真因（抽取诊断坐实）= 截断丢事实**：batch=30 一次抽~30条事实，JSON+推理超8000token被砍断→半数批次存0条（Finance入库1000条仅存20条记忆→multi_hop 0%、仅abstention 80%）。内容/prompt 没问题（完整批次能抽出含日期/SLA/负责人的精确事实）。**修法=`--ingest-batch 30→8~10`（待跑）**。每域独立、QA只问本域→评Finance只需入库其30k；4域可并行（已加`--persist-dir`）。
+- **A-MEM + HippoRAG ✅ SocialMem 全量出数（2026-06-10，四基线齐）**：judge acc 总体 **HippoRAG 59.0 > A-MEM 48.1 > BM25 28.6 > Mem0 13.7**。
+  - ⚡ **重要发现（叙事升级）**：SocialMem 上**图结构记忆反超 BM25**（GroupMem/EverMem 是 BM25 碾压，方向相反）。Mem0 三场全垫底。
+  - 差距最大类：Q5 ToM(Mem0 3.3 vs HippoRAG 73.9)、Q9 离群(10 vs 80)、Q7 关系(9.4 vs 63)、Q4 归属(11.2 vs 70)；唯 Q3 多人聚合四家全崩(≤4.5)。
+  - 持久化：A-MEM 加 pickle 落盘 `.amem_store/`(复用验证 OK)；HippoRAG 自带 `.hipporag_store/`；并发竞态用 `evo_threshold=1e9` 修掉。
+  - A-MEM 非截断成本实测(非思考)：302 社交 note ¥0.38、1.0 调用/note；全量外推 ~¥417（原估 ¥980 偏高）。详见 `复现/实验结果.md §7`。
+- **Mem0 失效深度归因 ✅（`复现/Mem0失效分析.md`）**：用 `analyze_mem0_fail.py` 重建 BM25对/Mem0错 案例两边实际检索内容，定位 **5+1 大根因**：①精确字面值被摘要抹平 ②属性-实体绑定断裂 ③说话人/归属丢失 ④言语行为/立场被丢 ⑤关系边缺失+显著性偏置 ⑥时间更新不追踪。**一句话：Mem0 失败不在检索，在入库 LLM 摘要把「字面值/说话人归属/人际关系」压没了** → 直接、可量化地论证 speaker-grounded 结构化记忆。
 - **额外**：SocialMemBench/EverMemBench 的 loader、A-MEM/HippoRAG baseline 代码已就位（`复现/`）。
 - **汇报产物**：`复现/P4实验进度汇报.md`（文档）+ `复现/P4实验进度汇报.pptx`（PPT，`gen_p4_ppt.py` 生成；本机无 node 故未用 `汇报slides-build/gen.js` 约定，改用 python-pptx 套同款调色板）。
 - **下一步**：① 验证 Mem0 抽取非空后跑适中规模；② BM25 全量 745 题（便宜、坐实 motivation）；③ 合成训练数据 + Stage1 SFT。
