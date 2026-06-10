@@ -59,21 +59,38 @@ def build_amem(model_embed: str, llm_model: str):
     return AgenticMemorySystem(model_name=model_embed, llm_backend="openai", llm_model=llm_model)
 
 
-def ingest(ms, messages: List[dict], max_messages: int) -> int:
-    """A-MEM 入库：每条消息一条 note（A-MEM 会调 LLM 做笔记/链接构建，串行）。"""
+def ingest(ms, messages: List[dict], max_messages: int,
+           batch_size: int = 64, workers: int = 16) -> int:
+    """A-MEM 批量入库（保留增量图特性 + 提高吞吐 + 省 token）。
+
+    每条消息一条 note。每条 add_note 内部 = analyze_content(1次LLM 生成元数据) +
+    process_memory 的"记忆演化"(KNN 找邻居 + 1次LLM 决定链接/更新邻居)。串行 ~12s/条。
+    批量化：每批 batch_size 条**并发**跑(workers 线程) → 批内并发生成note+embedding+KNN+图更新→commit；
+    批间串行(barrier) → 下一批的演化能看到上一批已 commit 的记忆，**保留增量图**(batch1→graph1, batch2→graph2…)。
+    代价：批内并发对邻居的演化是"读改写"，可能轻微脏写/丢链接(与 Mem0 并行变体同性质)，换数倍提速。
+    """
     import time
-    n = 0
-    t0 = time.time()
+    from concurrent.futures import ThreadPoolExecutor
+    contents = []
     for m in messages[:max_messages]:
-        content = (m.get("content") or "").strip()
-        if not content:
-            continue
-        ms.add_note(content=f"[{m.get('author','?')}] {content}",
-                    tags=[str(m.get("author", "?"))], category=str(m.get("_channel", "")))
-        n += 1
-        if n % 20 == 0:
-            print(f"  [入库] 已加 {n} 条 note（{time.time()-t0:.0f}s）", flush=True)
-    print(f"  [入库] 共 {n} 条 note，耗时 {time.time()-t0:.0f}s")
+        c = (m.get("content") or "").strip()
+        if c:
+            contents.append((f"[{m.get('author','?')}] {c}", str(m.get("author", "?")), str(m.get("_channel", ""))))
+    t0 = time.time()
+    n = 0
+    for i in range(0, len(contents), batch_size):
+        batch = contents[i:i + batch_size]
+
+        def _one(item):
+            try:
+                ms.add_note(content=item[0], tags=[item[1]], category=item[2])
+            except Exception as e:
+                print(f"    [入库warn] add_note 失败: {str(e)[:80]}", flush=True)
+        with ThreadPoolExecutor(max_workers=workers) as ex:   # 批内并发；with 退出=批 barrier
+            list(ex.map(_one, batch))
+        n += len(batch)
+        print(f"  [批量入库] {n}/{len(contents)} 条（batch={batch_size}, {workers}并发, {time.time()-t0:.0f}s）", flush=True)
+    print(f"  [入库] 共 {n} 条 note，耗时 {time.time()-t0:.0f}s（chroma 实存 {len(ms.memories)} 条）")
     return n
 
 
@@ -130,7 +147,9 @@ def main() -> int:
     ap.add_argument("--domain", "--unit", dest="domain", default="Finance", help="单元；或 all")
     ap.add_argument("--qtype", default="all")
     ap.add_argument("--limit", type=int, default=None, help="每类最多取多少题")
-    ap.add_argument("--max-messages", type=int, default=2000, help="入库消息上限（A-MEM 每条调 LLM，很贵）")
+    ap.add_argument("--max-messages", type=int, default=2000, help="入库消息上限（A-MEM 每条调 LLM）")
+    ap.add_argument("--batch-size", type=int, default=64, help="批量入库每批条数(批内并发)")
+    ap.add_argument("--ingest-workers", type=int, default=16, help="批内并发 worker 数")
     ap.add_argument("--top-k", type=int, default=10)
     ap.add_argument("--embed-model", default="all-MiniLM-L6-v2")
     ap.add_argument("--llm-model", default="deepseek-v4-flash")
@@ -157,7 +176,7 @@ def main() -> int:
     for unit, messages, questions in iter_units(args.benchmark, HERE, args.domain):
         print(f"\n=== [amem/{args.benchmark}] 单元 {unit}：入库 {min(len(messages),args.max_messages)} 条 ===")
         ms = build_amem(args.embed_model, args.llm_model)  # 每单元独立记忆
-        ingest(ms, messages, args.max_messages)
+        ingest(ms, messages, args.max_messages, batch_size=args.batch_size, workers=args.ingest_workers)
         summ = run_unit(args.benchmark, unit, questions, ms, client, args.llm_model,
                         agent_system, judge_system, args.top_k, Path(args.results_dir),
                         qtype=args.qtype, limit=args.limit, qa_workers=args.qa_workers)
