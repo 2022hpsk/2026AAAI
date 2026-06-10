@@ -142,7 +142,9 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--max-passages", type=int, default=200, help="每单元最多索引多少 passage(OpenIE 很贵)")
     ap.add_argument("--top-k", type=int, default=10)
-    ap.add_argument("--llm-model", default="deepseek-v4-flash")
+    ap.add_argument("--llm-model", default="deepseek-v4-flash", help="QA-agent/judge 模型(思考模式)")
+    ap.add_argument("--openie-llm", default="deepseek-chat",
+                    help="OpenIE(NER+三元组抽取)模型。默认 deepseek-chat(非思考)→抽取不需推理，省 ~2.4× token")
     ap.add_argument("--embed-model", default="facebook/contriever")
     ap.add_argument("--qa-workers", type=int, default=8)
     ap.add_argument("--save-dir", default=str(HERE / ".hipporag_store"))
@@ -165,7 +167,7 @@ def main() -> int:
         passages = messages_to_passages(messages, args.max_passages)
         print(f"\n=== [hipporag/{args.benchmark}] 单元 {unit}：{len(passages)} 个 passage -> OpenIE 索引 ===")
         hr = build_hipporag(os.path.join(args.save_dir, f"{args.benchmark}_{unit}"),
-                            args.llm_model, args.embed_model)
+                            args.openie_llm, args.embed_model)  # OpenIE 用非思考模型省 token
         hr.index(docs=passages)   # OpenIE 抽三元组 + 建图 + 嵌入（大量 LLM 调用）
         summ = run_unit(args.benchmark, unit, hr, passages, questions, client, args.llm_model,
                         agent_system, judge_system, args.top_k, Path(args.results_dir),

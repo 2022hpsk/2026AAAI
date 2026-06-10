@@ -152,7 +152,9 @@ def main() -> int:
     ap.add_argument("--ingest-workers", type=int, default=16, help="批内并发 worker 数")
     ap.add_argument("--top-k", type=int, default=10)
     ap.add_argument("--embed-model", default="all-MiniLM-L6-v2")
-    ap.add_argument("--llm-model", default="deepseek-v4-flash")
+    ap.add_argument("--llm-model", default="deepseek-v4-flash", help="QA-agent/judge 模型(用思考模式)")
+    ap.add_argument("--amem-llm", default="deepseek-chat",
+                    help="A-MEM 内部 note/演化用的模型。默认 deepseek-chat(非思考)→省 token：结构化元数据不需推理，实测输出↓4×、成本↓2.4×")
     ap.add_argument("--qa-workers", type=int, default=16)
     ap.add_argument("--results-dir", default=str(HERE / "results"))
     args = ap.parse_args()
@@ -175,7 +177,7 @@ def main() -> int:
     all_summary: Dict[str, Dict] = {}
     for unit, messages, questions in iter_units(args.benchmark, HERE, args.domain):
         print(f"\n=== [amem/{args.benchmark}] 单元 {unit}：入库 {min(len(messages),args.max_messages)} 条 ===")
-        ms = build_amem(args.embed_model, args.llm_model)  # 每单元独立记忆
+        ms = build_amem(args.embed_model, args.amem_llm)  # A-MEM 内部用非思考模型(省token)
         ingest(ms, messages, args.max_messages, batch_size=args.batch_size, workers=args.ingest_workers)
         summ = run_unit(args.benchmark, unit, questions, ms, client, args.llm_model,
                         agent_system, judge_system, args.top_k, Path(args.results_dir),
