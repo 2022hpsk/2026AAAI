@@ -56,7 +56,12 @@ def build_amem(model_embed: str, llm_model: str):
         return r.choices[0].message.content
     OpenAIController.get_completion = _patched_get_completion
 
-    return AgenticMemorySystem(model_name=model_embed, llm_backend="openai", llm_model=llm_model)
+    ms = AgenticMemorySystem(model_name=model_embed, llm_backend="openai", llm_model=llm_model)
+    # ★ 禁用入库时的周期 consolidate_memories()：它会迭代 self.memories 重建 chroma，
+    #   与批量并发 add_note 撞"dictionary changed size"竞态。add_note 本就直接写 chroma，
+    #   且图/链接存在 self.memories(检索用它)，跳过 consolidate 对结果无影响。
+    ms.evo_threshold = 10 ** 9
+    return ms
 
 
 def ingest(ms, messages: List[dict], max_messages: int,
@@ -156,6 +161,9 @@ def main() -> int:
     ap.add_argument("--amem-llm", default="deepseek-chat",
                     help="A-MEM 内部 note/演化用的模型。默认 deepseek-chat(非思考)→省 token：结构化元数据不需推理，实测输出↓4×、成本↓2.4×")
     ap.add_argument("--qa-workers", type=int, default=16)
+    ap.add_argument("--persist-dir", default=str(HERE / ".amem_store"),
+                    help="A-MEM 持久化目录：入库后把 self.memories(note+链接图) pickle 落盘；复跑直接加载+本地重建 chroma，跳过入库")
+    ap.add_argument("--force-ingest", action="store_true", help="即便已持久化也重新入库")
     ap.add_argument("--results-dir", default=str(HERE / "results"))
     args = ap.parse_args()
 
@@ -174,11 +182,24 @@ def main() -> int:
     agent_system = read_text(str(HERE / "GroupMemBench/prompts/hipporag_agent_system.txt"))
     judge_system = read_text(str(HERE / "GroupMemBench/prompts/hipporag_judge_system.txt"))
 
+    import pickle, re as _re
+    persist_root = Path(args.persist_dir); persist_root.mkdir(parents=True, exist_ok=True)
     all_summary: Dict[str, Dict] = {}
     for unit, messages, questions in iter_units(args.benchmark, HERE, args.domain):
-        print(f"\n=== [amem/{args.benchmark}] 单元 {unit}：入库 {min(len(messages),args.max_messages)} 条 ===")
+        safe = _re.sub(r"[^a-zA-Z0-9._-]", "-", str(unit))
+        pkl = persist_root / f"{args.benchmark}__{safe}__m{args.max_messages}.pkl"
         ms = build_amem(args.embed_model, args.amem_llm)  # A-MEM 内部用非思考模型(省token)
-        ingest(ms, messages, args.max_messages, batch_size=args.batch_size, workers=args.ingest_workers)
+        if pkl.exists() and not args.force_ingest:
+            with open(pkl, "rb") as f:
+                ms.memories = pickle.load(f)
+            ms.consolidate_memories()   # 从 self.memories 本地重建 chroma(无 LLM)
+            print(f"\n=== [amem/{args.benchmark}] 单元 {unit}：[复用] 加载 {len(ms.memories)} 条记忆，跳过入库 ===")
+        else:
+            print(f"\n=== [amem/{args.benchmark}] 单元 {unit}：入库 {min(len(messages),args.max_messages)} 条 ===")
+            ingest(ms, messages, args.max_messages, batch_size=args.batch_size, workers=args.ingest_workers)
+            with open(pkl, "wb") as f:
+                pickle.dump(ms.memories, f)   # 落盘：note+链接图
+            print(f"  [持久化] 已存 {len(ms.memories)} 条记忆 → {pkl.name}")
         summ = run_unit(args.benchmark, unit, questions, ms, client, args.llm_model,
                         agent_system, judge_system, args.top_k, Path(args.results_dir),
                         qtype=args.qtype, limit=args.limit, qa_workers=args.qa_workers)

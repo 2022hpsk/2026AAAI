@@ -21,3 +21,7 @@ EverMemBench-Dynamic/
 
 # SocialMemBench 匿名代码库(zip解压)
 SocialMemBench-code/
+
+# A-MEM / HippoRAG 持久化库
+.amem_store/
+.hipporag_store/
