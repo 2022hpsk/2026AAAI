@@ -16,7 +16,7 @@ const C = {
   violet:"6D5BD0", violetBg:"ECE9FB",
 };
 const F = { head:"Microsoft YaHei", body:"Microsoft YaHei", num:"Arial Black" };
-const W=10, H=5.625, M=0.5, TOTAL=17;
+const W=10, H=5.625, M=0.5, TOTAL=18;
 const RECT="rect", ROUND="roundRect", OVAL="ellipse", LINE="line";
 const mkShadow = () => ({ type:"outer", color:"0F172A", blur:8, offset:3, angle:135, opacity:0.12 });
 
@@ -468,14 +468,14 @@ async function main(){
       [TC("EverMemBench",{bold:true,color:C.ink}),C0("2400"),C0("52.5%",{bold:true,color:C.cyanDk}),C0("19.9%",{bold:true,color:C.amberDk}),C0("跑中",{color:C.muted}),C0("跑中",{color:C.muted}),TC("BM25 远超 Mem0",{color:C.ink2})],
     ];
     s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[1.75,0.62,0.92,0.92,0.92,1.05,2.82],rowH:[0.34,0.52,0.52,0.52],border:{type:"solid",color:C.line,pt:0.75},valign:"middle",margin:[2,4,2,4],autoPage:false});
-    s.addText("口径：judge acc(主)，agent+judge 均 DeepSeek、16 并发；Mem0=并行无合并变体；A-MEM/HippoRAG 检索 top-k=10 passage(各8条)上下文更大、judge 偏宽松→绝对值偏高，相对排序为准。GroupMem/EverMem 的图记忆全量待跑。",
+    s.addText("口径：二值 judge acc(非论文 0–1 MeanQ)；agent+judge 均 DeepSeek、16 并发；Mem0=并行无合并变体。⚠ HippoRAG top-10 passage=80 条原文，预算远大于他人(见下页审查)。GroupMem/EverMem 图记忆待跑。",
       {x:M,y:3.58,w:W-2*M,h:0.42,fontSize:8,italic:true,color:C.muted,fontFace:F.body,margin:0,lineSpacingMultiple:1.05});
     card(s,M,4.08,W-2*M,0.86,{fill:C.amberBg,accent:C.amber,lineCol:null});
     s.addText([
-      {text:"叙事升级：",options:{bold:true,color:C.amberDk}},
-      {text:"不是「记忆系统都没用」，而是「摧毁 speaker-grounding 的摘要式记忆(Mem0，三场全垫底)失败、保留 who-said-what 结构的图记忆(HippoRAG 59/A-MEM 48，反超 BM25 29)有效」",options:{color:C.ink2}},
-      {text:" → 正是 SpeakerMem-R1（speaker-grounded 结构化记忆+RL）的直接动机。",options:{bold:true,color:C.red}},
-    ],{x:M+0.2,y:4.08,w:W-2*M-0.4,h:0.86,fontSize:9.2,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.1});
+      {text:"经口径审查后的结论：",options:{bold:true,color:C.amberDk}},
+      {text:"① Mem0 三场全垫底=稳健(摘要式记忆摧毁 speaker-grounding)；② HippoRAG「反超」是预算假象(BM25 同 80 条预算→57.3≈59)；③ A-MEM(48,同~10 预算)真实超 BM25@10(29)",options:{color:C.ink2}},
+      {text:" → 支撑 SpeakerMem-R1：Mem0 失败是核心动机，结构化记忆同预算下确有增益。",options:{bold:true,color:C.red}},
+    ],{x:M+0.2,y:4.08,w:W-2*M-0.4,h:0.86,fontSize:9,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.1});
     footer(s);
   }
 
@@ -507,9 +507,9 @@ async function main(){
       C0("48.1%",{bold:true,color:C.white,fill:C.dark}),C0("59.0%",{bold:true,color:C.cyan,fill:C.dark})]);
     s.addTable(rows,{x:M,y:1.5,w:W-2*M,colW:[2.4,1.65,1.65,1.65,1.65],rowH:[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.32],border:{type:"solid",color:C.line,pt:0.5},valign:"middle",margin:[1,4,1,4],autoPage:false});
     card(s,M,4.95,W-2*M,0.5,{fill:C.cyanBg,accent:C.cyan,lineCol:null});
-    s.addText([{text:"看点：",options:{bold:true,color:C.cyanDk}},
-      {text:"Mem0 每类垫底/并列垫底；Q5 ToM(3→74)、Q9 离群(10→80)、Q7 关系(9→63)、Q4 归属(11→70) 图记忆碾压。唯 Q3 多人聚合四家全崩(≤4.5)——结构化记忆也没解决的硬骨头。",options:{color:C.ink2}}],
-      {x:M+0.2,y:4.95,w:W-2*M-0.4,h:0.5,fontSize:8.4,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.04});
+    s.addText([{text:"口径审查(下页详)：",options:{bold:true,color:C.cyanDk}},
+      {text:"Mem0 每类垫底=稳健；但 HippoRAG 高分含预算水分——BM25 同 80 条预算总体即 57.3≈HippoRAG 59，Q4/Q7/Q9 还反超。A-MEM(同~10 预算)超 BM25@10 才是真实增益。",options:{color:C.ink2}}],
+      {x:M+0.2,y:4.95,w:W-2*M-0.4,h:0.5,fontSize:8.2,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.04});
     footer(s);
   }
 
@@ -542,6 +542,48 @@ async function main(){
       {text:"\nBM25 赢=逐字原文+全元数据不丢；HippoRAG/A-MEM 赢=建实体-关系图/笔记链接，保 who-said-what。",options:{color:C.faint}},
       {text:" → 直接、可量化地论证 speaker-grounded 结构化记忆的必要。",options:{bold:true,color:C.cyan}},
     ],{x:M+0.2,y:4.5,w:W-2*M-0.4,h:0.92,fontSize:9,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.12});
+    footer(s);
+  }
+
+  // ============ PAGE 15 — SocialMem 口径审查（统一预算 + 真实排序）============
+  {
+    const s=pres.addSlide(); s.background={color:C.white};
+    header(s,"P4 · SocialMem 口径审查：统一检索预算后的真实排序","三个论文都用 top-10 单条；统一后 HippoRAG 高分破灭、A-MEM 才是真增益",C.red);
+    const C0=(t,o={})=>TC(t,{align:"center",fs:8.6,...o});
+    // 左：公平预算终表
+    s.addText("★ 公平预算 top-10（该报的口径）",{x:M,y:1.46,w:W/2-0.3,h:0.26,fontSize:10,bold:true,color:C.green,fontFace:F.head,margin:0});
+    const A=[[TH("基线"),TH("acc"),TH("MeanQ"),TH("MeanN")],
+      ["A-MEM (~10 note)","48.1","0.345","0.339",C.green],
+      ["BM25 (10 turn)","28.6","0.221","0.234",C.ink],
+      ["HippoRAG (~8)","22.9","0.184","0.171",C.amberDk],
+      ["Mem0 (10 mem)","13.7","0.093","0.091",C.red]];
+    const ar=[A[0].map(x=>x)]; A.slice(1).forEach((r,i)=>{const bg=i%2?C.panel2:C.white;
+      ar.push([TC(r[0],{bold:true,color:r[4],fs:8.2,fill:bg}),C0(r[1]+"%",{bold:true,color:r[4],fill:bg}),C0(r[2],{color:C.ink2,fill:bg}),C0(r[3],{color:C.muted,fill:bg})]);});
+    s.addTable(ar,{x:M,y:1.74,w:W/2-0.3,colW:[1.95,1.1,1.0,1.0],rowH:[0.32,0.36,0.36,0.36,0.36],border:{type:"solid",color:C.line,pt:0.5},valign:"middle",margin:[1,3,1,3],autoPage:false});
+    s.addText([{text:"真实排序 A-MEM > BM25 > HippoRAG > Mem0。",options:{bold:true,color:C.green}},
+      {text:" A-MEM 同预算大幅超 BM25 = 结构化记忆真增益(语义note+富化)；Mem0 全口径垫底。",options:{color:C.ink2}}],
+      {x:M,y:3.62,w:W/2-0.3,h:0.66,fontSize:7.8,fontFace:F.body,margin:0,lineSpacingMultiple:1.06});
+    // 右：预算敏感性(为何 HippoRAG 59 是假的)
+    const bx=W/2+0.1;
+    s.addText("预算敏感性：HippoRAG 的 59 全靠 80 条原文",{x:bx,y:1.46,w:W/2-0.3,h:0.26,fontSize:10,bold:true,color:C.cyanDk,fontFace:F.head,margin:0});
+    const B=[["BM25 @10 条","28.6%",C.muted],
+      ["BM25 @80 条","57.3%",C.green],
+      ["HippoRAG @80 条(10pass)","59.0%",C.cyanDk],
+      ["HippoRAG @8 条(公平)","22.9%",C.red]];
+    B.forEach((r,i)=>{const y=1.76+i*0.5;
+      card(s,bx,y,W/2-0.3,0.42,{accent:r[2],fill:(i==1||i==3)?C.panel2:C.white});
+      s.addText(r[0],{x:bx+0.14,y:y,w:2.7,h:0.42,fontSize:8.4,bold:true,color:C.ink,fontFace:F.body,margin:0,valign:"middle"});
+      s.addText(r[1],{x:bx+W/2-1.3,y:y,w:1,h:0.42,fontSize:12,bold:true,color:r[2],fontFace:F.head,margin:0,valign:"middle",align:"right"});
+    });
+    s.addText("BM25 @10→@80 几乎翻倍并追平 HippoRAG；HippoRAG 压到公平预算反跌破 BM25 → 图谱没加分。",
+      {x:bx,y:3.84,w:W/2-0.3,h:0.44,fontSize:7.8,italic:true,color:C.cyanDk,fontFace:F.body,margin:0,lineSpacingMultiple:1.05});
+    // 底部三铁律
+    card(s,M,4.4,W-2*M,0.95,{fill:C.dark,accent:C.red,lineCol:null});
+    s.addText([
+      {text:"三条铁律：",options:{bold:true,color:C.red}},
+      {text:"① 跨 baseline 统一检索预算=top-10 单条(三论文皆然)；② 报论文 MeanQ/MeanN(非二值 acc)、最好用论文同款 judge；③ 不能声称超过论文方法。",options:{color:"DDE6F5"}},
+      {text:"\n能立的结论：Mem0 摘要式记忆全口径垫底(核心 motivation)；A-MEM 同预算优于 BM25 = 结构化记忆有效的真证据。",options:{bold:true,color:C.cyan}},
+    ],{x:M+0.2,y:4.4,w:W-2*M-0.4,h:0.95,fontSize:8.6,fontFace:F.body,margin:0,valign:"middle",lineSpacingMultiple:1.12});
     footer(s);
   }
 

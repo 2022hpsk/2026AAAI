@@ -8,6 +8,7 @@ __pycache__/
 *.pyc
 # 运行输出（数字记到 README，不入库原始结果）
 results/
+results*/
 *.log
 # 密钥文件，绝不入库
 .env
@@ -25,3 +26,6 @@ SocialMemBench-code/
 # A-MEM / HippoRAG 持久化库
 .amem_store/
 .hipporag_store/
+
+# 预算/口径对照实验输出（数字记到文档，不入库）
+results_*/
